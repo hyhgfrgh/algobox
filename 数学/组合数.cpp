@@ -3,6 +3,7 @@
 
 const int mod = 998244353;
 long long qpow(long long a,long long n){
+    a %= mod;
     long long res = 1;
     while(n){
         if(n&1) res *= a,res %= mod;
