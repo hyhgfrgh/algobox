@@ -20,3 +20,5 @@ void Phi(int n){
         }
     }
 }
+
+
