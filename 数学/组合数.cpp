@@ -1,4 +1,4 @@
-{
+
     // mod 须为质数
 
 const int mod = 998244353;
@@ -34,4 +34,4 @@ long long lucas(int a,int b){
     return lucas(a/mod,b/mod)*C(a%mod,b%mod)%mod;
 }
 
-}
+
