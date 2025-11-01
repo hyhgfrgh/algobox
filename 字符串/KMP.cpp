@@ -7,7 +7,7 @@ void solve(){
     string a,b;cin>>a>>b;
     int na = a.size(),nb = b.size();
     a = " "+a,b = " "+b;
-    vector<int> ne(nb);
+    vector<int> ne(nb+1);
     for(int i = 2,j = 0;i<=nb;i++){
         while(j>0 and b[j+1] != b[i]) j = ne[j];
         if(b[i] == b[j+1]) j++;
