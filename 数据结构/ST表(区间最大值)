@@ -1,0 +1,40 @@
+#include<bits/stdc++.h>
+using namespace std;
+
+mt19937_64 rng(chrono::system_clock::now().time_since_epoch().count());
+#define int long long
+const int mod = 998244353;
+void solve(){
+    int n,k;cin>>n>>k;
+    vector<int> a(n+1);
+    map<int,vector<int>> pos;
+    for(int i = 1;i<=n;i++){
+        cin>>a[i];
+        pos[a[i]].emplace_back(a[i]);
+    }
+    vector<vector<int>> st(n+1,vector<int> (25));
+    for(int i = 1;i<=n;i++) st[i][0] = a[i];
+    for(int j = 1;j<25;j++){
+        for(int i = 1;i<=n;i++){
+            st[i][j] = max(st[i][j-1],st[min(n,i+(1LL<<(j-1)))][j-1]);
+        }
+    }
+    auto mx = [&](int l,int r)->int{
+        int g = __lg(r-l+1);
+        return max(st[l][g],st[r-(1<<g)+1][g]);
+    };
+
+    while (k--) {
+        int l,r;cin>>l>>r;
+        cout<<mx(l,r)<<"\n";
+    }
+
+}   
+
+signed main(){
+    cin.tie(nullptr)->sync_with_stdio(false);
+    int T = 1;
+    // cin>>T;
+    while(T--) solve();
+    return 0;
+}
