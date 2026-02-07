@@ -1,0 +1,75 @@
+#include <algorithm>
+#include<bits/stdc++.h>
+using namespace std;
+
+#define ull signed long long 
+#define int long long 
+
+int tot = 0;
+struct node{
+    int ls,rs;
+    int sum;
+    node(){
+        sum = 0;
+        ls = 0;
+        rs = 0;
+    }
+};
+vector<node> tr(1);
+int build(int l,int r){
+    tr.emplace_back(node{});
+    int cur = ++tot;
+    if(l == r) return cur;
+    int mid = (l+r)/2;
+    tr[cur].ls = build(l,mid);
+    tr[cur].rs = build(mid+1,r);
+    return cur;
+}
+int update(int p,int l,int r,int root){
+    tr.emplace_back(node{});
+    int cur = ++tot;
+    tr[cur] = tr[root];
+    tr[cur].sum += 1;
+    if(l == r) return cur;
+    int mid = (l+r)/2;
+    if(mid>=p) tr[cur].ls = update(p, l, mid, tr[cur].ls);
+    else tr[cur].rs = update(p, mid+1, r, tr[cur].rs);
+    return cur;
+}
+int query(int u,int v,int l,int r,int k){
+    int mid = (l+r)/2;
+    if(l == r) return l;
+    int x = tr[tr[v].ls].sum-tr[tr[u].ls].sum;
+    if(k<=x) return query(tr[u].ls, tr[v].ls, l, mid, k);
+    else return query(tr[u].rs,tr[v].rs,mid+1,r,k-x);
+}
+
+#define CINT \
+// cin>>T;
+void solve(){
+    int n,m;cin>>n>>m;
+    vector<int> a(n+1),rt(n+1);
+    for(int i = 1;i<=n;i++){
+        cin>>a[i];
+    }
+    vector b = a;
+    sort(b.begin(),b.end());
+    int inf = b.size()+10;
+    rt[0] = build(1, inf);
+    b.erase(unique(b.begin()+1,b.end()),b.end());
+    for(int i = 1;i<=n;i++){
+        int p = lower_bound(b.begin()+1,b.end(),a[i])-b.begin();
+        rt[i] = update(p,1,inf,rt[i-1]);
+    }
+    while(m--){
+        int l,r,k;cin>>l>>r>>k;
+        cout<<b[query(rt[l-1],rt[r],1,inf,k)]<<"\n";
+    }
+}
+signed main(){
+    std::cin.tie(nullptr)->sync_with_stdio(false);
+    int T = 1;
+    CINT;
+    while(T--) solve();
+    return 0;
+}
