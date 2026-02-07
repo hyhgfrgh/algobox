@@ -1,0 +1,74 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+#define ull signed long long
+#define int long long
+
+int tot = 0;
+struct node {
+    int ls, rs;
+    int value;
+};
+vector<node> tr(1);
+int build(int l, int r, vector<int>& a) {
+    tr.emplace_back(node{});
+    int cur = ++tot;
+    if (l == r) {
+        tr[cur].value = a[l];
+        return cur;
+    }
+    int mid = (l + r) / 2;
+    tr[cur].ls = build(l, mid, a);
+    tr[cur].rs = build(mid + 1, r, a);
+    return cur;
+}
+int update(int p, int l, int r, int old, int value) {
+    tr.emplace_back(node{});
+    int cur = ++tot;
+    tr[cur] = tr[old];
+    if (l == r) {
+        tr[cur].value = value;
+        return cur;
+    }
+    int mid = (l + r) / 2;
+    if (p <= mid)
+        tr[cur].ls = update(p, l, mid, tr[cur].ls, value);
+    else
+        tr[cur].rs = update(p, mid + 1, r, tr[cur].rs, value);
+    return cur;
+}
+int find(int u, int l, int r, int p) {
+    int mid = (l + r) / 2;
+    if (l == r) return tr[u].value;
+    if (p <= mid)
+        return find(tr[u].ls, l, mid, p);
+    else
+        return find(tr[u].rs, mid + 1, r, p);
+}
+#define CINT // cin>>T;
+void solve() {
+    int n, m;
+    cin >> n >> m;
+    vector<int> a(n + 1), rt(m + 1);
+    for (int i = 1; i <= n; i++) { cin >> a[i]; }
+    rt[0] = build(1, n, a);
+    for (int i = 1; i <= m; i++) {
+        int v, op, p;
+        cin >> v >> op >> p;
+        if (op == 1) {
+            int c;
+            cin >> c;
+            rt[i] = update(p, 1, n, rt[v], c);
+        } else {
+            rt[i] = rt[v];
+            cout << find(rt[v], 1, n, p) << "\n";
+        }
+    }
+}
+signed main() {
+    std::cin.tie(nullptr)->sync_with_stdio(false);
+    int T = 1;
+    CINT;
+    while (T--) solve();
+    return 0;
+}
