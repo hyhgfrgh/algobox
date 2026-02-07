@@ -25,10 +25,10 @@ int build(int l,int r){
     tr[cur].rs = build(mid+1,r);
     return cur;
 }
-int update(int p,int l,int r,int root){
+int update(int p,int l,int r,int old){
     tr.emplace_back(node{});
     int cur = ++tot;
-    tr[cur] = tr[root];
+    tr[cur] = tr[old];
     tr[cur].sum += 1;
     if(l == r) return cur;
     int mid = (l+r)/2;
