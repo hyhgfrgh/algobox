@@ -1,8 +1,9 @@
-// 设当前递归层为 a0,b0,x',y'
+// 设当前递归层为 a,b,x',y'
 // 在该层内完成exgcd后返回的x,y满足 b*y + (a%b)*x = gcd
 // 换一下形式就是 b*y + (a-a/b*b)*x = gcd
 //              a*x + b*(y-a/b*x) = gcd
-// 即当前层的x不变，y-=a/b*x即可得到 a*x+b*y = gcd
+// 令 x' = x,y' = y-a/b*x 
+// 即当前层的x不变，y-=a/b*x即可得到 a*x‘+b*y’ = gcd
 
 long long exgcd(long long a, long long b, long long &x, long long &y) {
     if (b == 0) {
