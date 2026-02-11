@@ -4,12 +4,12 @@
 
 {
     // 用二次差分在区间[l,r]上加上等差数列：首项s，公差d
-    auto add_arithmetic = [&]( int l, int r, int s, int d) {
-        if(l > r) return;
-        d2[l] += s;
-        if(l+1 <= n+1) d2[l+1] += d - s;
-        if(r+1 <= n+1) d2[r+1] += -(s + (r-l+1)*d);
-        if(r+2 <= n+1) d2[r+2] += d-(s + (r-l+1)*d);
+   auto add_arithmetic = [&](vector<int>& d2, int l, int r, int s, int d) {
+        if (l > r) return;
+        d2[l] += s;
+        if (l + 1 <= n + 1) d2[l + 1] += d - s;
+        if (r + 1 <= n + 1) d2[r + 1] += -(s + (r - l + 1) * d);
+        if (r + 2 <= n + 1) d2[r + 2] += s + (r - l) * d;
     };
 }
 
