@@ -1,8 +1,116 @@
 # 数学
 
+## 组合数学
+
+### 组合数预处理
+
+#### 组合数预处理
+
+记得init，如果模数不一样也要变,其中f[i]表示i的阶乘，g[i]表示i阶乘的逆元
+
+```cpp
+const int mod = 998244353;
+long long qpow(long long a,long long n){
+    a %= mod;
+    long long res = 1;
+    while(n){
+        if(n&1) res *= a,res %= mod;
+        a *= a,a %= mod;
+        n >>= 1;
+    }
+    return res;
+}
+vector<int> f,g;
+void init(int size){
+    f.resize(size+1);g.resize(size+1);
+    f[0] = g[0] = 1;
+    for(int i = 1;i<=size;i++){
+        f[i] = 1LL*f[i-1]*i%mod;
+        g[i] = 1LL*g[i-1]*qpow(i,mod-2)%mod;
+    }
+}
+long long C(int a,int b){
+    if(b>a || b<0) return 0;
+    return 1LL*f[a]*g[b]%mod*g[a-b]%mod;
+}
+long long A(int a,int b){
+    return 1LL*f[a]*g[a-b]%mod;
+}
+long long lucas(int a,int b){
+    if(b>a || b<0) return 0;
+    if(a == 0 || b == 0) return 1;
+    return lucas(a/mod,b/mod)*C(a%mod,b%mod)%mod;
+}
+```
+
+#### 枚举固定大小的子集
+
+gospersHack
+
+```cpp
+    auto nxt = [&](int x)->int {
+        // 生成下一个更大的同样二进制有k个1的数
+        // int注意越界
+        int c = x & -x;
+        int r = x + c;
+        return (((r ^ x) >> 2) / c) | r;
+    };
+    // 例如一共有10位，枚举1的个数为4的所有数字
+    for(int i = (1<<4)-1;i<(1<<10);i = nxt(i)){
+        cout<<i<<" ";
+    }
+    cout<<"\n";
+```
+
+### 斯特林数
+
+#### 第一类斯特林数 斯特林轮换数
+
+实际意义: 把n个不同的元素，划分为m个非空圆排列的方案数
+
+**递推公式**
+
+[n,m] = [n-1,m-1]+(n-1)*[n-1,m]
+
+从组合意义上讲即自己作为一个新的轮换 或者自己插入到已有的人的左边
+
+边界 [0,0] = 1
+
+```cpp
+    int S[n+1][m+1];
+    S[0][0] = 1;
+    for(int i = 1;i<=n;i++){
+        for(int j = 1;j<=m;j++){
+            S[i][j] = (S[i-1][j-1]+1LL*(i-1)*S[i-1][j])%mod;
+        }
+    }
+```
+
+#### 第二类斯特林数 斯特林子集数
+
+实际意义: 把n个不同的元素，划分为m个非空子集的方案数
+
+**递推公式**
+
+\{n,m\} = \{n-1,m-1\}+m*\{n-1,m\}
+
+从组合意义上讲即自己作为一个新的子集 或者自己插入已有的子集中
+
+**常用公式**
+
+x^n = \sum_{k=0}^n\{n,k\}(x,k)k!
+
+常用化简 n^m
+
+递推边界 \{ 0,0\} = 1
+
+**计算公式**
+
+\{n,m\}=\sum_{i=0}^{m}\frac{(-1)^{m-i}i^n}{i!(m-i)!}
+
 ## 筛法
 
-+ **质数筛**：
+- **质数筛**：
 
 ```cpp
 std::vector<int> minp, primes;
@@ -26,9 +134,9 @@ void sieve(int n) {
 }
 ```
 
-+ **区间素数筛** P1835
+- **区间素数筛** P1835
 
-获取区间 $[l,r]$ 中的所有素数，复杂度$O(\sqrt{r} +(r-l)*loglog(r))$
+获取区间 [l,r] 中的所有素数，复杂度O(\sqrt{r} +(r-l)*loglog(r))
 
 ```cpp
 std::vector<int> prime;
@@ -49,7 +157,7 @@ void Interval(int l, int r) {
 }
 ```
 
-+ 欧拉函数(试除法)
+- 欧拉函数(试除法)
 
 ```cpp
 int phi(int x){
@@ -65,7 +173,7 @@ int phi(int x){
 }
 ```
 
-+ 欧拉函数(筛法)
+- 欧拉函数(筛法)
 
 ```cpp
 std::vector<i64> minp, phi, primes;
@@ -91,9 +199,9 @@ void Phi(int n) {
 }
 ```
 
-+ 筛法求每个数 **不同质因子的个数** 
+- 筛法求每个数 **不同质因子的个数**
   
-  $fac[i]$ 表示数字 $i$ 的**不同质因子个数**
+  fac[i] 表示数字 i 的**不同质因子个数**
 
 ```cpp
 std::vector<int> minp, fac, primes;
@@ -121,11 +229,11 @@ void sieve(int n) {
 }
 ```
 
-+ 筛法求有几个质因子
+- 筛法求有几个质因子
   
-  $fac[i]$ 表示数字 $i$ 的**所有质因子个数** （包含相同质因子）
+  fac[i] 表示数字 i 的**所有质因子个数** （包含相同质因子）
 
-$fac[i]=d(n) = (a_1 + 1)(a_2 + 1) \dots (a_k + 1)$
+fac[i]=d(n) = (a_1 + 1)(a_2 + 1) \dots (a_k + 1)
 
 ```cpp
 std::vector<int> minp,fac,primes;
@@ -147,11 +255,11 @@ void prime_fac(int n){
 }
 ```
 
-+ 筛法求因子个数
+- 筛法求因子个数
 
-$fac[i]$ 表示数字 i 的**所有因子个数** 
+fac[i] 表示数字 i 的**所有因子个数**
 
- $mi[i]$  表示数字i的**最小质因子的指数**
+mi[i] 表示数字i的**最小质因子的指数**
 
 ```cpp
 std::vector<int> primes,minp,mi,fac;
@@ -178,11 +286,11 @@ void factor(int n){
 }
 ```
 
-+ 筛法求因数和
+- 筛法求因数和
 
-$mis[i] = 1 + p_1^1 + p_1^2 + \cdots + p_1^{a_1} = \frac{p_1^{a_1+1} - 1}{p_1 - 1}$
+mis[i] = 1 + p_1^1 + p_1^2 + \cdots + p_1^{a_1} = \frac{p_1^{a_1+1} - 1}{p_1 - 1}
 
-$facs[i] = \sigma(i) = (1 + p_1 + \dots + p_1^{a_1}) \times (1 + p_2 + \dots + p_2^{a_2}) \times \cdots$
+facs[i] = \sigma(i) = (1 + p_1 + \dots + p_1^{a_1}) \times (1 + p_2 + \dots + p_2^{a_2}) \times \cdots
 
 ```cpp
 std::vector<int> primes,minp,mis,facs;
@@ -210,7 +318,7 @@ void factors(int n){
 }
 ```
 
-+ 筛法求莫比乌斯函数
+- 筛法求莫比乌斯函数
 
 ```cpp
 std::vector<int> minp, primes, mu;
@@ -241,15 +349,15 @@ void Mobius(int n) {
 
 ## 费马小定理
 
-若p为质数，且a,p互质，则$a^{p-1} \equiv 1(mod\ \ p)$ 
+若p为质数，且a,p互质，则a^{p-1} \equiv 1(mod\ \ p)
 
-$a*a^{p-2} = a^{p-1} \equiv 1 (mod\ \ p)$ 
+a*a^{p-2} = a^{p-1} \equiv 1 (mod\ \ p)
 
-所以快速幂求a模意义下的逆元就是qpow(a,mod-2)   只适用于p为质数
+所以快速幂求a模意义下的逆元就是qpow(a,mod-2) 只适用于p为质数
 
 ## 欧拉函数
 
-定义：1~n中与n互质的数的个数，记为$\phi(n) = \Pi_{i=1}^s\frac{p_i-1}{p_i}$ 
+定义：1~n中与n互质的数的个数，记为\phi(n) = \Pi_{i=1}^s\frac{p_i-1}{p_i}
 
 ```cpp
 int get_phi(int x) {
@@ -267,11 +375,11 @@ int get_phi(int x) {
 
 ## 欧拉定理
 
-若$gcd(a,m)=1$ ，则$a^{\phi(m)} \equiv 1 (mod \ \ m)$
+若gcd(a,m)=1 ，则a^{\phi(m)} \equiv 1 (mod \ \ m)
 
 ### 扩展欧拉定理
 
-不需要满足$gcd(a,m) = 1$ 
+不需要满足gcd(a,m) = 1
 
 $$
 a^b \equiv 
@@ -281,33 +389,33 @@ a^{b(mod \ \phi(m)) + \phi(m)},b\geq \phi(m)
 \end{cases}
 $$
 
-*当gcd(a,m) !=1时，想象一个圈，外面漏了一个尾巴的结构，起初a位置尾巴的位置，而圈表示周期长度是$\phi(m)$ ,从a进入圈需要的步数不超过$\phi(m)$ ,$b<\phi(m)$ 的时候直接快速幂计算，因为终点可能还在尾巴上。否则a最后的位置一定落在圈内，前走$\phi(m)$ 步进入圈，然后走余数步就可以了*
+*当gcd(a,m) !=1时，想象一个圈，外面漏了一个尾巴的结构，起初a位置尾巴的位置，而圈表示周期长度是\phi(m) ,从a进入圈需要的步数不超过\phi(m) ,b<\phi(m) 的时候直接快速幂计算，因为终点可能还在尾巴上。否则a最后的位置一定落在圈内，前走\phi(m) 步进入圈，然后走余数步就可以了*
 
 ## 威尔逊定理
 
- $(p-1)! \equiv-1(mod \ \ p)$ 是p为质数的充分必要条件
+(p-1)! \equiv-1(mod \ \ p) 是p为质数的充分必要条件
 
 ### 推论:
 
-+ 若p是质数，则$(p-1)!+1 \equiv0$ $(mod$ $p)$ 
+- 若p是质数，则(p-1)!+1 \equiv0 (mod p)
 
-+ 若p是大于4的合数，则$(p-1)!\equiv0$ $(mod$  $p)$ 
+- 若p是大于4的合数，则(p-1)!\equiv0 (mod p)
 
 ## 裴蜀定理（贝祖定理）
 
-一定存在整数x,y   满足ax+by=gcd(a,b)
+一定存在整数x,y 满足ax+by=gcd(a,b)
 
 ### 推广:
 
-+ 一定存在整数x,y 满足    ax  +  by = gcd(a,b) * n
+- 一定存在整数x,y 满足 ax + by = gcd(a,b) * n
 
-+ 一定存在整数$X_1 ...X_i$ 满足$\sum_{i=1}^n A_iX_i=gcd(A_1,A_2,...,A_n)$ 
+- 一定存在整数X_1 ...X_i 满足\sum_{i=1}^n A_iX_i=gcd(A_1,A_2,...,A_n)
 
 \newpage
 
 ## 扩展欧几里得算法
 
-求 $a*x+b*y=gcd(a,b)$ 的特解$(x_0,y_0)$ 
+求 a*x+b*y=gcd(a,b) 的特解(x_0,y_0)
 
 ```cpp
 //扩展欧几里得算法
@@ -427,7 +535,7 @@ T EXCRT(const std::vector<T> &m, const std::vector<T> &r) { //有x=r1(mod m1),x=
 
 求解高次同余方程
 
-给定整数a,b,p,   a,p互质(  a,p不互质时用exbsgs  ),求满足$a^x \equiv b(mod\ \ p)$ 的最小非负整数 $x$
+给定整数a,b,p, a,p互质( a,p不互质时用exbsgs ),求满足a^x \equiv b(mod\ \ p) 的最小非负整数 x
 
 *bsgs本身复杂度是log(p)的，这个板子用的map,复杂度带个log,tle的话换umap试试*
 

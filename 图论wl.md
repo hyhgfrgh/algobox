@@ -4,29 +4,29 @@
 
 网络流是一种建好图以后，内置反悔机制的一种贪心策略，不需要我们人为去寻找贪心的反悔策略
 
-容量:当前边最多经过的流量记作$C(u,v)$ 
+容量:当前边最多经过的流量记作C(u,v)
 
-流量:当前边实际经过的流量记作$F(u,v)$
+流量:当前边实际经过的流量记作F(u,v)
 
- 残量: $C(u,v)-F(u,v)$ 
+残量: C(u,v)-F(u,v)
 
 残量网络：把残量为0的边删去，剩下的图称作残量网络，对应边的边权也变为残量
 
 增广路：与二分图中增广路定义不同，增广路指残量网络上源点到汇点的一条简单路径
 
-割:割是一个边的集合，一个边集是割当且仅当去掉这些边后网络不在流通，即最大流为$0$ 
+割:割是一个边的集合，一个边集是割当且仅当去掉这些边后网络不在流通，即最大流为0
 
 最大流最小割定理:一个网格的最大流等于其最小割
 
 我们根据定义发现，只要存在增广路，流量就能不断增大，因此求最大流是一个求增广路的过程,并且这条增广路我们遵循能流满就流满的贪心策略
 
-我们选择一条增广路，假设流量为$f$,我们正向边容量$-f$，反向边容量$+f$，这就是最开始我们说的内置反悔机制,也就是说我们可以通过反边流量进行反悔
+我们选择一条增广路，假设流量为f,我们正向边容量-f，反向边容量+f，这就是最开始我们说的内置反悔机制,也就是说我们可以通过反边流量进行反悔
 
-由于$EK$算法不优于$dinic$,我们只介绍$dinic$算法
+由于EK算法不优于dinic,我们只介绍dinic算法
 
-$dinic$是多路增广+当前弧优化的增广路算法
+dinic是多路增广+当前弧优化的增广路算法
 
-我们通过$bfs$给图分层，分层后多路增广,也就是同时累加多条增广路的流量
+我们通过bfs给图分层，分层后多路增广,也就是同时累加多条增广路的流量
 
 当前弧优化是指，流量已经流满的边无用，我们没必要对每个点每次都从头开始遍历，而是记录一个当前弧，直接从当前弧开始遍历
 
@@ -34,7 +34,7 @@ $dinic$是多路增广+当前弧优化的增广路算法
 
 ### 拆点
 
-注意到在流网络中，我们对于限制都是加在边上的。那么对于点的限制我们往往考虑拆点。具体的说，我们把一个点 $U$ 拆成对应的$Inu$和$Outu$ ，然后连边$Inu->Outu$，边的流量限制即为该点的流量限制。
+注意到在流网络中，我们对于限制都是加在边上的。那么对于点的限制我们往往考虑拆点。具体的说，我们把一个点 U 拆成对应的Inu和Outu ，然后连边Inu->Outu，边的流量限制即为该点的流量限制。
 
 ### 最大流Dinic
 
@@ -249,4 +249,128 @@ struct MinCostFlow {
     }
 
 };
+```
+
+## 最近公共祖先lca
+
+### 欧拉序+RMQ
+
+O(1)求lca , RMQ返回区间dep最小的欧拉序数组下标 p ,那么 lca 就是 euler[p]
+
+```cpp
+void eulerRMQ(int n,int root,vector<int> &euler,vector<int> &dep,
+                        vector<int> &first,vector<vector<int>>& e,vector<vector<int>> &st){
+    euler = vector<int> (2*n+1);
+    dep   = vector<int>(2*n+1); 
+    first = vector<int>(n + 1);
+    st = vector<vector<int>> (21,vector<int> (2*n+1));
+    int tot = 1;
+    auto dfs = [&](auto self, int u, int fa, int d) -> void {
+        first[u] = tot;
+        euler[tot] = u;
+        dep[tot] = d;
+        tot++;
+        for (int v : e[u]) {
+            if (v == fa) continue;
+            self(self, v, u, d + 1);
+            euler[tot] = u;
+            dep[tot] = d;
+            tot++;
+        }
+    };
+    dfs(dfs, root, 0, 1);
+    for (int i = 1; i <= 2 * n; i++) st[0][i] = i;
+    for (int k = 1; k <= 20; k++) {
+        for (int i = 1; i <= 2 * n; i++) {
+            int x = st[k - 1][i], y = st[k - 1][min(i + (1LL << (k - 1)), 2 * n)];
+            st[k][i] = (dep[x] < dep[y]) ? x : y;
+        }
+    }
+}
+
+void solve() {
+    int n, q, root;
+    cin >> n >> q >> root;
+    vector<vector<int>> e(n + 1);
+    for (int i = 2; i <= n; i++) {
+        int u, v;
+        cin >> u >> v;
+        e[u].emplace_back(v);
+        e[v].emplace_back(u);
+    }
+    vector<vector<int>> st;
+    vector<int> euler, dep, first;
+    eulerRMQ(n,root,euler,dep,first,e,st);
+    auto lca = [&](int u, int v) -> int {
+        int l = first[u], r = first[v];
+        if (l > r) swap(l, r);
+        int g = __lg(r - l + 1);
+        int x = st[g][l], y = st[g][r - (1LL << g) + 1];
+        int p = dep[x] < dep[y] ? x : y;
+        return euler[p];
+    };
+    while (q--) {
+        int u, v;
+        cin >> u >> v;
+        cout << lca(u, v) << "\n";
+    }
+}
+```
+
+\newpage
+
+### 倍增求LCA
+
+O(log(n)) 求 lca ,原理是先把u和v跳到同一个高度，然后再共同上跳知道最近的 lca
+
+```cpp
+void faLCA(int n, int root, vector<vector<int>>& adj, vector<vector<int>>& fa, vector<int>& dep) {
+    fa = vector<vector<int>>(n + 1, vector<int>(21));
+    dep = vector<int>(n + 1);
+    auto dfs = [&](auto self, int u, int ffa) -> void {
+        fa[u][0] = ffa;
+        dep[u] = dep[ffa] + 1;
+        for (int v : adj[u]) {
+            if (v == ffa) continue;
+            self(self, v, u);
+        }
+    };
+    dfs(dfs, root, root);
+    for (int k = 1; k <= 20; k++) {
+        for (int i = 1; i <= n; i++) { fa[i][k] = fa[fa[i][k - 1]][k - 1]; }
+    }
+}
+
+void solve() {
+    int n, q, root;
+    cin >> n >> q >> root;
+    vector<vector<int>> adj(n + 1);
+    for (int i = 2; i <= n; i++) {
+        int u, v;
+        cin >> u >> v;
+        adj[u].emplace_back(v);
+        adj[v].emplace_back(u);
+    }
+    // static int fa[500010][21]; 洛谷模板题P3379换成这个才不会t
+    vector<vector<int>> fa;
+    vector<int> dep;
+    faLCA(n, root, adj, fa, dep);
+    auto lca = [&](int u, int v) -> int {
+        if (dep[u] < dep[v]) swap(u, v);
+        for (int k = 20; k >= 0; k--) {
+            if (dep[fa[u][k]] < dep[v]) continue;
+            u = fa[u][k];
+        }
+        if (u == v) return u;
+        for (int k = 20; k >= 0; k--) {
+            if (fa[u][k] != fa[v][k]) { u = fa[u][k], v = fa[v][k]; }
+        }
+        return fa[u][0];
+    };
+    while (q--) {
+        int u, v;
+        cin >> u >> v;
+        cout << lca(u, v) << "\n";
+    }
+}
 ```
