@@ -1,5 +1,87 @@
 # 图论
 
+## 树的直径
+
+注意初始化时传入的图因该是1-base
+
+可直接获取直径长度，其中一条直径上的所有点，以及每个点到父节点直接连边的权值
+
+两次bfs会更改fa[]数组，其中st表示返回路径的起点，en表示终点，d是直径长度
+
+```cpp
+struct TreeDiameter{
+    int n,d = -1,st = -1,en = -1;
+    std::vector<std::vector<std::pair<int, int>>> g; // 邻接表（无向图）
+    std::vector<pair<int,int>> fa; // [指向的父节点fa,父节点路径的权值w]                            // 父节点记录（用于路径回溯）
+    // 1-base
+    TreeDiameter(vector<vector<pair<int,int>>>& e) {
+        n = e.size()-1;
+        g = e;
+        fa.resize(n+1);
+    }
+    // BFS 求最远节点（返回节点编号）
+    std::pair<int, int> bfs(int start)
+    {
+        std::vector<int> dep(n + 1, -1);
+        std::queue<int> q;
+        q.push(start);
+        dep[start] = 0;
+        fa[start] = {-1,0};
+        while (!q.empty())
+        {
+            int u = q.front();
+            q.pop();
+            for (auto [v, w] : g[u])
+            {
+                if (dep[v] == -1)
+                {
+                    dep[v] = dep[u] + w;
+                    fa[v] = {u,w};
+                    q.push(v);
+                }
+            }
+        }
+        int maxPos = std::max_element(dep.begin(), dep.end()) - dep.begin();
+        return std::make_pair(maxPos, dep[maxPos]);
+    }
+    // 求树的直径（返回直径长度和端点 {u, v}）
+    std::pair<int, std::pair<int, int>> getDiameter()
+    {
+        if(d != -1){
+            return {d,{en,st}};
+        }
+        auto [x, dis1] = bfs(1); // 第一次BFS,此时根变为x
+        auto [y, dis2] = bfs(x); // 第二次BFS，此时根变为y
+        d = dis2,st = y,en = x;
+        return {dis2, {y, x}};
+    }
+    // 获取树直径上的所有点first 以及 每个点到父节点路径的权值second
+    std::vector<pair<int,int>> getPathDia(){
+        getDiameter();
+        vector<pair<int,int>> path;
+        int p = st;
+        while(p != en){
+            path.emplace_back(fa[p]);
+            p = fa[p].first;
+        }
+        path.emplace_back(-1,0);
+        return path;
+    }
+};
+```
+
+直径的性质:
+
++ 树上任意一点，离它最远的一点必然是直径两端点之一
+
++ 两个联通块合并，新联通块的直径两端点一定是原先的四个直径端点中的其中两个
+
++ 我们可以扩展![image](https://cdn.nlark.com/yuque/__latex/2b89979f54ec02a7bf87aa0c1ea58ff9.svg)中的结论，我们将直径的定义扩展为点权+边权的情况下仍然成立
+
++ 一棵树可以拥有多条直径，其所有直径共用一个中点，中点有可能在边上(两个相邻端点的边上)
+
+在树上选择一条边长度和不超过 s 的路径使其他所有结点到这条路径的距离的最大值最小，那么选择的这条路径在树的直径上，可以用滑动窗口+st表做
+
 ## 网络流
 
 网络流是一种建好图以后，内置反悔机制的一种贪心策略，不需要我们人为去寻找贪心的反悔策略
