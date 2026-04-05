@@ -1,4 +1,4 @@
-# 数据结构
+\newpage
 
 ## 前缀和/差分
 
@@ -377,11 +377,11 @@ private:
 
 区间乘和区间加两个操作，关键在于维护乘法标记和加法标记之间的关系
 
-具体地说，我们在下传标记时，采用的计算和的方法为![image](https://cdn.nlark.com/yuque/__latex/cbbf4761b94444051ec5e90fe1d9e34e.svg)，那么我们就要保证下传标记的时候正确操作，即![image](https://cdn.nlark.com/yuque/__latex/1d19b58f9864e03822771165dab68b35.svg),![image](https://cdn.nlark.com/yuque/__latex/f7014f7d795c75c9cd2162e2dd9faf52.svg)
+具体地说，我们在下传标记时，采用的计算和的方法为$sum=sum*mul+add*len$，那么我们就要保证下传标记的时候正确操作，即$u.add=u.add*mul+add$, $u.mul=u.mul*mul$
 
 覆盖标记和加标记的处理方法：
 
-区间覆盖和区间加，关键在于懒标记之间的清除关系，在我们操作![image](https://cdn.nlark.com/yuque/__latex/8c7a5bbfa95ebd42fdb35f17d6e00cc4.svg)标记时，要清空对应位置的![image](https://cdn.nlark.com/yuque/__latex/7dd2af96399916d1009e67e99e1f60eb.svg)标记，这样才能保证信息维护的正确性。具体来讲，什么叫清空对应位置的![image](https://cdn.nlark.com/yuque/__latex/2a11d10e5f1c1b171f06c38c6dfadab6.svg)标记呢？也就是说，一旦我们更新了![image](https://cdn.nlark.com/yuque/__latex/0a25ff5d5f49aeb7283b1b06cf5b55d5.svg)位置的![image](https://cdn.nlark.com/yuque/__latex/8c7a5bbfa95ebd42fdb35f17d6e00cc4.svg)信息，我们就要立刻把![image](https://cdn.nlark.com/yuque/__latex/77c3adce895348f6083c425fe1ba2624.svg)位置的![image](https://cdn.nlark.com/yuque/__latex/2a11d10e5f1c1b171f06c38c6dfadab6.svg)信息清除掉，因为显然他不会再起到作用，而且在![image](https://cdn.nlark.com/yuque/__latex/17a0042cf8bb0b5dac93b7dea1780afe.svg)的时候我们要先处理![image](https://cdn.nlark.com/yuque/__latex/8c7a5bbfa95ebd42fdb35f17d6e00cc4.svg)标记，原因仍然是我们可能会清除![image](https://cdn.nlark.com/yuque/__latex/2a11d10e5f1c1b171f06c38c6dfadab6.svg)标记
+区间覆盖和区间加，关键在于懒标记之间的清除关系，在我们操作$cover$标记时，要清空对应位置的$add$标记，这样才能保证信息维护的正确性。具体来讲，什么叫清空对应位置的$add$标记呢？也就是说，一旦我们更新了$u$位置的$cover$信息，我们就要立刻把$u$位置的$add$信息清除掉，因为显然他不会再起到作用，而且在$pushdown$的时候我们要先处理$cover$标记，原因仍然是我们可能会清除$add$标记
 
 ### 维护最大子段和
 
@@ -968,6 +968,8 @@ struct DSU {
 };
 ```
 
+\newpage
+
 **例题**:
 
 Alice 和 Bob 在玩一个游戏：他写一个由 0 和 1 组成的序列。Alice 选其中的一段（比如第 3 位到第 5 位），问他这段里面有奇数个 1 还是偶数个 1。Bob 回答你的问题，然后 Alice 继续问。Alice 要检查 Bob 的答案，指出在 Bob 的第几个回答一定有问题。有问题的意思就是存在一个 01 序列满足这个回答前的所有回答，而且不存在序列满足这个回答前的所有回答及这个回答。
@@ -1192,9 +1194,11 @@ template <int T, class G> struct LineBase {
 };
 ```
 
+\newpage
+
 ### 前缀线性基
 
-可以理解为可持久化线性基，本质就是建立了不同版本的线性基。我们用p[idx][i]表示第idx个版本的线性基第i个位的基，用pos[idx][i]表示该基最晚出现的位置（贪心），如果新加入的数可以导出某个基且出现位置更晚，我们就和原本的基贪心的交换位置。因为我们对于区间询问[l,r]，我们会查r版本的线性基，如果某个位置![image](https://cdn.nlark.com/yuque/__latex/2443fbcfeb7e85e1d62b6f5e4f27207e.svg)的基的最晚出现位置\geq l，就说明这个基是可用的。
+可以理解为可持久化线性基，本质就是建立了不同版本的线性基。我们用p[idx][i]表示第idx个版本的线性基第i个位的基，用pos[idx][i]表示该基最晚出现的位置（贪心），如果新加入的数可以导出某个基且出现位置更晚，我们就和原本的基贪心的交换位置。因为我们对于区间询问[l,r]，我们会查r版本的线性基，如果某个位置$i$的基的最晚出现位置$\geq l$，就说明这个基是可用的。
 
 注意构造函数传入的参数数组是1-base的
 
@@ -1211,14 +1215,12 @@ struct PreLineBase
     // pos[i][j]: 第i个版本中第j位线性基元素的插入位置
     std::vector<std::array<int, Z>> p;
     std::vector<std::array<int, Z>> pos;
-
     // 构造函数，从数组a初始化可持久化线性基
     // 数组a为 1-base
     PreLineBase(const std::vector<G> &a) : p(a.size()), pos(a.size())
     {
         // 初始化第0个版本
-        for (int i = 0; i < Z; ++i)
-        {
+        for (int i = 0; i < Z; ++i){
             p[0][i] = pos[0][i] = 0;
         }
         // 逐个插入元素，生成新版本
@@ -1235,7 +1237,6 @@ struct PreLineBase
         p[idx] = p[idx - 1];
         pos[idx] = pos[idx - 1];
         int cur = idx;  // 当前元素的插入位置
-
         // 从高位到低位处理每一位
         for (int i = Z - 1; i >= 0; --i)
         {
@@ -1247,20 +1248,17 @@ struct PreLineBase
                     pos[idx][i] = cur; // 记录插入位置
                     break;
                 }
-
                 // 贪心策略：保留插入位置较后的元素
                 if (pos[idx][i] < cur)
                 {
                     std::swap(p[idx][i], x);
                     std::swap(pos[idx][i], cur);
                 }
-
                 // 消元操作
                 x ^= p[idx][i];
             }
         }
     }
-
     // 查询区间[l,r]内元素能组成的最大异或和
     G querymax(int l, int r)
     {
@@ -1276,7 +1274,6 @@ struct PreLineBase
         }
         return ans;
     }
-
     // 判断区间[l,r]内元素能否异或得到x
     bool isexist(int l, int r, G x)
     {
@@ -1302,10 +1299,8 @@ struct PreLineBase
     {
         int cnt = 0;
         // 从高位到低位处理
-        for (int i = Z - 1; i >= 0; --i)
-        {
-            if (pos[r][i] >= l)
-            {
+        for (int i = Z - 1; i >= 0; --i){
+            if (pos[r][i] >= l){
                 cnt++;
             }
         }
@@ -1353,6 +1348,8 @@ public:
 };
 ```
 
+\newpage
+
 #### 返回位置（返回权值最大的下标）
 
 ```cpp
@@ -1376,7 +1373,8 @@ public:
         {
             for (int i = 1; i + (1 << j) - 1 <= n; ++i)
             {
-                st[j][i] = (a[st[j - 1][i]] > a[st[j - 1][i + (1 << (j - 1))]] ? st[j - 1][i] : st[j - 1][i + (1 << (j - 1))]);
+                st[j][i] = (a[st[j - 1][i]] > a[st[j - 1][i + (1 << (j - 1))]] 
+                    ? st[j - 1][i] : st[j - 1][i + (1 << (j - 1))]);
             }
         }
     }
@@ -1384,7 +1382,8 @@ public:
     int operator()(int l, int r)
     {
         int log = std::__lg(r - l + 1);
-        return (A[st[log][l]] > A[st[log][r - (1 << log) + 1]] ? st[log][l] : st[log][r - (1 << log) + 1]);
+        return (A[st[log][l]] > A[st[log][r - (1 << log) + 1]] 
+                    ? st[log][l] : st[log][r - (1 << log) + 1]);
     }
 };
 ```
@@ -1555,11 +1554,11 @@ struct Heap
 
 | **操作**       | **二项堆 (Binomial)** | **配对堆 (Pairing)** | **备注**                    |
 | ------------ | ------------------ | ----------------- | ------------------------- |
-| **`push`**   | O(\log n) (最坏)     | **O(1)**          | 配对堆直接挂载，二项堆可能要多次“进位”      |
-| **`join`**   | O(\log n) (最坏)     | **O(1)**          | 配对堆的神技，也是你模板里最核心的区别       |
-| **`top`**    | O(\log n) 或 O(1)   | **O(1)**          | 二项堆需要扫描森林中所有树的根（除非维护额外指针） |
-| **`pop`**    | O(\log n)          | O(\log n) (均摊)    | 性能瓶颈都在这里                  |
-| **`modify`** | O(\log n)          | O(\log n) (均摊)    | 配对堆实际常数极小                 |
+| **`push`**   | $O(\log n)$ (最坏)   | **O(1)**          | 配对堆直接挂载，二项堆可能要多次“进位”      |
+| **`join`**   | $O(\log n)$ (最坏)   | **O(1)**          | 配对堆的神技，也是你模板里最核心的区别       |
+| **`top`**    | $O(\log n)$ 或 O(1) | **O(1)**          | 二项堆需要扫描森林中所有树的根（除非维护额外指针） |
+| **`pop`**    | $O(\log n)$        | $O(\log n)$ (均摊)  | 性能瓶颈都在这里                  |
+| **`modify`** | $O(\log n)$        | $O(\log n)$ (均摊)  | 配对堆实际常数极小                 |
 
 ```cpp
 #include <bits/stdc++.h>

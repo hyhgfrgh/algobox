@@ -14,10 +14,8 @@ g++ -std=c++2a -O2 data.cpp -o data
 for((i=1;;i++))
 do
     ./data > in.txt
-
     ./test < in.txt > out_user.txt
     ./std  < in.txt > out_brute.txt
-
     if ! diff out_user.txt out_brute.txt > /dev/null
     then
         echo "发现不一致！输入如下："
@@ -28,10 +26,8 @@ do
         cat out_brute.txt
         exit
     fi
-
     echo "通过测试 $i"   
 done
-
 // 带check的
 for((i=1;;i++))
 do
@@ -40,7 +36,6 @@ do
     ./test < in.txt >> temp.txt
     ./check < temp.txt > out_user.txt
     ./std  < in.txt > out_brute.txt
-
     if ! diff out_user.txt out_brute.txt > /dev/null
     then
         echo "发现不一致！输入如下："
@@ -51,7 +46,6 @@ do
         cat out_brute.txt
         exit
     fi
-
     echo "通过测试 $i"
 done
 ```

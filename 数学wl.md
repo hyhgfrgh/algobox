@@ -288,9 +288,9 @@ void factor(int n){
 
 - 筛法求因数和
 
-mis[i] = 1 + p_1^1 + p_1^2 + \cdots + p_1^{a_1} = \frac{p_1^{a_1+1} - 1}{p_1 - 1}
+$mis[i] = 1 + p_1^1 + p_1^2 + \cdots + p_1^{a_1} = \frac{p_1^{a_1+1} - 1}{p_1 - 1}$
 
-facs[i] = \sigma(i) = (1 + p_1 + \dots + p_1^{a_1}) \times (1 + p_2 + \dots + p_2^{a_2}) \times \cdots
+$facs[i] = \sigma(i) = (1 + p_1 + \dots + p_1^{a_1}) \times (1 + p_2 + \dots + p_2^{a_2}) \times \cdots$
 
 ```cpp
 std::vector<int> primes,minp,mis,facs;
@@ -399,7 +399,7 @@ $(p-1)! \equiv-1(mod \ \ p)$ 是p为质数的充分必要条件
 
 - 若p是质数，则$(p-1)!+1 \equiv0 (mod p)$
 
-- 若p是大于4的合数，则(p-1)!\equiv0 (mod p)
+- 若p是大于4的合数，则$(p-1)!\equiv0 (mod p)$
 
 ## 裴蜀定理（贝祖定理）
 
@@ -860,3 +860,50 @@ Matrix power(Matrix a, i64 b) {
 每个大于 2 的偶数都能表示成两个质数之和
 
 每个大于 5 的奇数都能表示成三个质数之和
+
+\newpage
+
+## 整除分块
+
+我们考虑如何解决各式各样的整除分块
+
+我们先考虑一维的情况
+
+即  $\sum_{i=1}^{n} \lfloor \frac{m}{f(i)} \rfloor$其中m是常数 $f(i)$为单元函数且单调增加,我们只需要每次求出右端点$R$，然后$L=R+1$即可,问 题在于如何求出$R$，我们来推式子
+
+首先我们已经知道左端点$L$，也就相当于知道了当前的值$val$也就是说$\lfloor \frac{m}{f(L)}\rfloor = val$那么$R$应该满足$R=max(i)$ 并且$i*val \leq m$ ,那么$R= \lfloor \frac{m}{val} \rfloor = \lfloor \frac{m}{\lfloor \frac{m}{f(L)} \rfloor} \rfloor$
+
+然后我们考虑二维的情况，一般形式为 $\sum_{i=1}^{min(n,m)} \lfloor \frac{n}{i} \rfloor\lfloor \frac{m}{i} \rfloor$，在这种情况下我们发现有两个限制，但我们只需要每次操作取他们的交集即可，因为有$L=R+1$在。可以保证全覆盖
+
+也就是取$R = min(\lfloor \frac{n}{\lfloor \frac{n}{i} \rfloor} \rfloor,\lfloor \frac{m}{\lfloor \frac{m}{i} \rfloor} \rfloor)$，至于函数的形式我们参考一维即可
+
+```cpp
+std::vector<std::pair<ll, ll>> floorBlock(ll n, ll m)
+// n/i i从1到m的整除分块区间
+{
+    std::vector<std::pair<ll, ll>> res;
+    for (ll l = 1, r; l <= std::min(n, m); l = r + 1)
+    {
+        r = std::min(n / (n / l), std::min(n, m));
+        res.emplace_back(l, r);
+    }
+    return res;
+}
+```
+
+上取整的整除分块
+
+```cpp
+std::vector<std::pair<ll, ll>> ceilBlock(ll n)
+// n/i向上取整的分块区间
+{
+    std::vector<std::pair<ll, ll>> res;
+    for (ll l = 1, r; l <= n; l = r + 1)
+    {
+        ll val = (n + l - 1) / l;
+        r = (val == 1 ? n : (n - 1) / (val - 1));
+        res.emplace(l, r);
+    }
+    return res;
+}
+```

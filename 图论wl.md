@@ -14,6 +14,8 @@
 
 平面图:将所有点和边铺在平面上，可以满足每条边之间两两不相交的图称作平面图，对于平面图$G=(V,E)$满足 $E\leq3V-6$且根据欧拉公式，平面图满足$V-E+F=C+1$其中$F$是面的个数,$C$是图连通块的个数
 
+\newpage
+
 ## 树的重心
 
 我们不妨设树的大小为$n$
@@ -74,6 +76,8 @@ private:
     }
 };
 ```
+
+\newpage
 
 ## 树的直径
 
@@ -151,7 +155,7 @@ struct TreeDiameter{
 
 + 两个联通块合并，新联通块的直径两端点一定是原先的四个直径端点中的其中两个
 
-+ 我们可以扩展![image](https://cdn.nlark.com/yuque/__latex/2b89979f54ec02a7bf87aa0c1ea58ff9.svg)中的结论，我们将直径的定义扩展为点权+边权的情况下仍然成立
++ 我们可以扩展$2$中的结论，我们将直径的定义扩展为点权+边权的情况下仍然成立
 
 + 一棵树可以拥有多条直径，其所有直径共用一个中点，中点有可能在边上(两个相邻端点的边上)
 
@@ -338,7 +342,6 @@ public:
 template <class T>
 class TreePre
 {
-
 private:
     int n;
     int idx = 0;
@@ -348,8 +351,7 @@ private:
     {
         fa[u] = f;
         siz[u] = 1;
-        for (auto [v, w] : g[u])
-        {
+        for (auto [v, w] : g[u]){
             if (v != f)
             {
                 dep[v] = dep[u] + 1;
@@ -368,19 +370,16 @@ private:
         dfn[u] = ++idx;
         idfn[idx] = u;
         top[u] = tp;
-        if (son[u])
-        {
+        if (son[u]){
             dfs2(son[u], tp);
         }
-        for (auto [v, w] : g[u])
-        {
+        for (auto [v, w] : g[u]){
             if (v != fa[u] and v != son[u])
             {
                 dfs2(v, v);
             }
         }
     }
-
 public:
     TreePre(std::vector<std::vector<std::pair<int, int>>> &g, int root)
         : g(g), n(g.size() - 1), root(root), dep(n + 1), top(n + 1), son(n + 1), fa(n + 1), siz(n + 1), dfn(n + 1), idfn(n + 1), dis(n + 1)
@@ -394,14 +393,11 @@ public:
     std::vector<T> dis;
     int getLca(int u, int v) // u和v在指定根下的lca
     {
-        while (top[u] != top[v])
-        {
-            if (dep[top[u]] > dep[top[v]])
-            {
+        while (top[u] != top[v]){
+            if (dep[top[u]] > dep[top[v]]){
                 u = fa[top[u]];
             }
-            else
-            {
+            else{
                 v = fa[top[v]];
             }
         }
@@ -410,13 +406,11 @@ public:
     // 对树上的路径操作
     void addRoad(int x,int y,int v,SegmentTree<T>& tr){
         while(top[x] != top[y]){
-            if (dep[top[x]] > dep[top[y]])
-            {
+            if (dep[top[x]] > dep[top[y]]){
                 tr.rangeAdd( dfn[top[x]],dfn[x], v);
                 x = fa[top[x]];
             }
-            else
-            {
+            else{
                 tr.rangeAdd( dfn[top[y]], dfn[y],v);
                 y = fa[top[y]];
             }
@@ -427,14 +421,12 @@ public:
     T queryRoad(int x,int y,SegmentTree<T>& tr){
         int res = 0;
         while(top[x] != top[y]){
-            if (dep[top[x]] > dep[top[y]])
-            {
+            if (dep[top[x]] > dep[top[y]]){
                 res += tr.rangeQuerySum( dfn[top[x]],dfn[x]);
                 res %= mod;
                 x = fa[top[x]];
             }
-            else
-            {
+            else{
                 res += tr.rangeQuerySum( dfn[top[y]], dfn[y]);
                 res %= mod;
                 y = fa[top[y]];
@@ -453,13 +445,14 @@ public:
         int res = tr.rangeQuerySum(dfn[x], dfn[x]+siz[x]-1);
         return res;
     }
-
 };
 ```
 
+\newpage
+
 ### 欧拉序+RMQ
 
-我们考虑用![image](https://cdn.nlark.com/yuque/__latex/3554585ecb04a4bf73b5938d239b0fe5.svg)序求两个点的![image](https://cdn.nlark.com/yuque/__latex/a5f1a3b1ccbcb20d75ccf0efa8b7bb12.svg)
+我们考虑用$dfs$序求两个点的$LCA$
 
 结论：不妨设$dfn[x]<dfn[y]$，那么$lca(x,y)$是$dfn$序上$[dfn[x]+1,dfn[y]]$区间内深度最小的点的父亲
 
@@ -562,6 +555,8 @@ void solve() {
 }
 ```
 
+\newpage
+
 ### 树上差分
 
 **点权差分** （ $ans[x]$ 表示$x$点的点权）
@@ -578,6 +573,8 @@ void solve() {
  ans[x]++;ans[y]++;
  ans[lca]-=2;
 ```
+
+\newpage
 
 ## 树上启发式合并
 
@@ -603,10 +600,8 @@ struct DSUOnTree
     std::vector<T> ans; // 子树大小、重儿子,每个节点的答案
     int root;
     int heavyNode = 0;              // 当前处理的重儿子节点
-
     int typeCnt = 0;                // 颜色种类数量
     std::vector<int> col, colorCnt; // 原始颜色数组  颜色出现次数数组
-
     DSUOnTree(std::vector<std::vector<std::pair<int, int>>> &g, std::vector<int> &col, int root) 
         : n(g.size() - 1), g(g), siz(n + 1), son(n + 1), ans(n + 1), 
             root(root), col(col), colorCnt(n + 1, 0) {}
@@ -614,8 +609,7 @@ struct DSUOnTree
     void preProcess(int u, int f)
     {
         siz[u] = 1;
-        for (auto [v, w] : g[u])
-        {
+        for (auto [v, w] : g[u]){
             if (v != f)
             {
                 preProcess(v, u);
@@ -627,11 +621,9 @@ struct DSUOnTree
             }
         }
     }
-
     // 添加/删除节点信息（需根据题目实现）
     // val 传 1 时是添加，传 -1 是删除
-    void update(int u, int f, int val)
-    {
+    void update(int u, int f, int val){
         // 示例：统计子树颜色种类数
         if (val == 1)
         {
@@ -646,8 +638,7 @@ struct DSUOnTree
     }
 
     // 遍历子树统计/清除信息
-    void traverse(int u, int f, int val)
-    {
+    void traverse(int u, int f, int val){
         update(u, f, val);
         for (auto [v, w] : g[u])
         {
@@ -657,29 +648,22 @@ struct DSUOnTree
             }
         }
     }
-
     // 主算法
-    void solve(int u, int f, bool keep)
-    {
+    void solve(int u, int f, bool keep){
         // 1. 先处理轻儿子（不保留信息）
-        for (auto [v, w] : g[u])
-        {
+        for (auto [v, w] : g[u]){
             if (v != f && v != son[u])
             {
                 solve(v, u, false);
             }
         }
-
         // 2. 处理重儿子（保留信息）
-        if (son[u])
-        {
+        if (son[u]){
             solve(son[u], u, true);
             heavyNode = son[u];
         }
-
         // 3. 再次遍历轻儿子并合并信息
-        for (auto [v, w] : g[u])
-        {
+        for (auto [v, w] : g[u]){
             if (v != f && v != son[u])
             {
                 traverse(v, u, 1);
@@ -688,9 +672,7 @@ struct DSUOnTree
         update(u, f, 1); // 添加当前节点信息
         // 4. 此处可保存当前节点的答案
         ans[u] = typeCnt;
-
         heavyNode = 0;
-
         // 5. 如果需要清除信息
         if (!keep)
         {
@@ -706,6 +688,8 @@ struct DSUOnTree
     }
 };
 ```
+
+\newpage
 
 ## 树哈希
 
@@ -794,6 +778,8 @@ struct Treehash // 得到每个点为根的hash值 On
     }
 };
 ```
+
+\newpage
 
 ## 网络流
 
