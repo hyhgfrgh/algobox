@@ -158,368 +158,303 @@ struct Fenwick {
 
 ## 线段树
 
-用数组初始化时数组应该为1-base
-
-若用 `init(int n_, Info v_ = Info())` 初始化且为1-base时，n_记得传n+1
-
-以下板子功能是单点修改维护最大子段和
+### 维护区间最值
 
 ```cpp
-template<class Info>
-struct SegmentTree {
-    int n;
-    std::vector<Info> info;
+template <class T>
+class RMQSegmentTree
+{
+#define lc u << 1
+#define rc u << 1 | 1
+    const T inf = std::numeric_limits<T>::max() / 2;
 
-    SegmentTree() : n(0) {}
-
-    SegmentTree(int n_, Info v_ = Info()) {
-        init(n_, v_);
-    }
-
-    template<class T>
-    SegmentTree(std::vector<T> init_) {
-        init(init_);
-    }
-
-    void init(int n_, Info v_ = Info()) {
-        init(std::vector(n_, v_));
-    }
-
-    template<class T>
-    void init(std::vector<T> init_) {
-        n = init_.size() - 1;
-        info.assign(4 << std::__lg(n), Info());
-        std::function<void(int, int, int)> build = [&](int p, int l, int r) {
-            if (r == l) {
-                info[p] = init_[l];
+public:
+    struct Node
+    {
+        int l, r;
+        T max, min;
+    };
+    RMQSegmentTree(const std::vector<T> &a) : n(a.size()), tr(4 * n)
+    {
+        n--;
+        std::function<void(int, int, int)> build = [&](int u, int l, int r)
+        {
+            tr[u] = {l, r, a[l], a[l]};
+            if (l == r)
+            {
                 return;
             }
-            int m = (l + r) / 2;
-            build(2 * p, l, m);
-            build(2 * p + 1, m + 1, r);
-            pull(p);
+            int mid = (l + r) >> 1;
+            build(lc, l, mid);
+            build(rc, mid + 1, r);
+            pushup(u);
         };
         build(1, 1, n);
     }
-
-    void pull(int p) {
-        info[p] = info[2 * p] + info[2 * p + 1];
+    void singleChange(int pos, T val)
+    {
+        singleChange(1, 1, n, pos, val);
+    }
+    T rangeQueryMax(int l, int r)
+    {
+        return rangeQueryMax(1, 1, n, l, r);
+    }
+    T rangeQueryMin(int l, int r)
+    {
+        return rangeQueryMin(1, 1, n, l, r);
     }
 
-    void modify(int p, int l, int r, int x, const Info &v) {
-        if (r == l) {
-            info[p] = v;
+private:
+    int n;
+    std::vector<Node> tr;
+    void pushup(int u)
+    {
+        tr[u].max = std::max(tr[lc].max, tr[rc].max);
+        tr[u].min = std::min(tr[lc].min, tr[rc].min);
+    }
+
+    void singleChange(int u, int l, int r, int x, T y)
+    {
+        if (l == r)
+        {
+            tr[u].max = tr[u].min = y;
             return;
         }
-        int m = (l + r) / 2;
-        if (x <= m) {
-            modify(2 * p, l, m, x, v);
-        } else {
-            modify(2 * p + 1, m + 1, r, x, v);
+        int mid = (l + r) >> 1;
+        if (x <= mid)
+        {
+            singleChange(lc, l, mid, x, y);
         }
-        pull(p);
+        else
+        {
+            singleChange(rc, mid + 1, r, x, y);
+        }
+        pushup(u);
     }
-
-    void modify(int p, const Info &v) {
-        modify(1, 1, n, p, v);
-    }
-
-    Info rangeQuery(int p, int l, int r, int x, int y) {
-        if (l >= x && r <= y) {
-            return info[p];
+    T rangeQueryMax(int u, int l, int r, int x, int y)
+    {
+        if (x <= l && y >= r)
+        {
+            return tr[u].max;
         }
-        int m = (l + r) / 2;
-        if (y <= m) {
-            return rangeQuery(2 * p, l, m, x, y);
-        } else if (x > m) {
-            return rangeQuery(2 * p + 1, m + 1, r, x, y);
-        } else {
-            return rangeQuery(2 * p, l, m, x, y) + rangeQuery(2 * p + 1, m + 1, r, x, y);
+        int mid = (l + r) >> 1;
+        T res = -inf;
+        if (x <= mid)
+        {
+            res = std::max(res, rangeQueryMax(lc, l, mid, x, y));
         }
-    }
-
-    Info rangeQuery(int l, int r) {
-        return rangeQuery(1, 1, n, l, r);
-    }
-
-    template<class F>
-    int findFirst(int p, int l, int r, int x, int y, F &&pred) {
-        if (l > y || r < x) {
-            return -1;
-        }
-        if (l >= x && r <= y && !pred(info[p])) {
-            return -1;
-        }
-        if (l == r) {
-            return l;
-        }
-        int m = (l + r) / 2;
-        int res = findFirst(2 * p, l, m, x, y, pred);
-        if (res == -1) {
-            res = findFirst(2 * p + 1, m + 1, r, x, y, pred);
+        if (y > mid)
+        {
+            res = std::max(res, rangeQueryMax(rc, mid + 1, r, x, y));
         }
         return res;
     }
-
-    template<class F>
-    int findFirst(int l, int r, F &&pred) {
-        return findFirst(1, 1, n, l, r, pred);
-    }
-
-    template<class F>
-    int findLast(int p, int l, int r, int x, int y, F &&pred) {
-        if (l > y || r < x) {
-            return -1;
+    T rangeQueryMin(int u, int l, int r, int x, int y)
+    {
+        if (x <= l && y >= r)
+        {
+            return tr[u].min;
         }
-        if (l >= x && r <= y && !pred(info[p])) {
-            return -1;
+        int mid = (l + r) >> 1;
+        T res = inf;
+        if (x <= mid)
+        {
+            res = std::min(res, rangeQueryMin(lc, l, mid, x, y));
         }
-        if (l == r) {
-            return l;
-        }
-        int m = (l + r) / 2;
-        int res = findLast(2 * p + 1, m + 1, r, x, y, pred);
-        if (res == -1) {
-            res = findLast(2 * p, l, m, x, y, pred);
+        if (y > mid)
+        {
+            res = std::min(res, rangeQueryMin(rc, mid + 1, r, x, y));
         }
         return res;
     }
-
-    template<class F>
-    int findLast(int l, int r, F &&pred) {
-        return findLast(1, 1, n, l, r, pred);
-    }
 };
-
-struct Info {
-    int pre, suf, sum, res;
-
-    Info(int s = -1e18) : pre(s), suf(s), sum(s), res(s) {}
-};
-
-Info operator+(const Info &a, const Info &b) {
-    Info c;
-    c.sum = a.sum + b.sum;
-    c.pre = std::max(a.pre, a.sum + b.pre);
-    c.suf = std::max(b.suf, a.suf + b.sum);
-    c.res = std::max({a.res, b.res, a.suf + b.pre});
-    return c;
-}
 ```
 
-\newpage
-
-## 懒标记线段树
-
-用数组初始化时数组应该为1-base
-
-若用 `init(int n_, Info v_ = Info())` 初始化且为1-base时，n_记得传n+1
-
-- 关于`findFist` 和 `findLast` 的使用，所查询的值一定要满足单调性才能二分
+### 维护区间修改
 
 ```cpp
-template<class F>
-int findFirst(int l, int r, F &&pred) {
-    return findFirst(1, 1, n, l, r, pred);
-}
-```
+template <class T>
+class SegmentTree
+{
+#define lc u << 1
+#define rc u << 1 | 1
+public:
+    struct Node
+    {
+        int l, r;
+        T add, sum;
+    };
 
-pred 是传入的一个Lambda 表达式,表示搜索条件，例如：当线段树维护了**区间最大值**（`info[p].max`）时，你想找到范围内 **最后一个大于等于 10** 的数的位置这样使用：
-
-```cpp
-int pos = tree.findLast(1, 1, n, 1, n, [&](const Info &v) {
-    return v.max >= 10;
-});
-```
-
-```cpp
-template<class Info, class Tag>
-struct LazySegmentTree {
-    int n;
-    std::vector<Info> info;
-    std::vector<Tag> tag;
-
-    LazySegmentTree() : n(0) {}
-
-    LazySegmentTree(int n_, Info v_ = Info()) {
-        init(n_, v_);
-    }
-
-    template<class T>
-    LazySegmentTree(std::vector<T> init_) {
-        init(init_);
-    }
-
-    void init(int n_, Info v_ = Info()) {
-        init(std::vector(n_, v_));
-    }
-
-    template<class T>
-    void init(std::vector<T> init_) {
-        n = init_.size() - 1;
-        info.assign(4 << std::__lg(n), Info());
-        tag.assign(4 << std::__lg(n), Tag());
-        std::function<void(int, int, int)> build = [&](int p, int l, int r) {
-            if (r == l) {
-                info[p] = init_[l];
+    SegmentTree(const std::vector<T> &a) : n(a.size()), tr(4 * n)
+    {
+        n--;
+        std::function<void(int, int, int)> build = [&](int u, int l, int r)
+        {
+            tr[u] = {l, r, 0, a[l]};
+            if (l == r)
+            {
                 return;
             }
-            int m = (l + r) / 2;
-            build(2 * p, l, m);
-            build(2 * p + 1, m + 1, r);
-            pull(p);
+            int mid = (l + r) >> 1;
+            build(lc, l, mid);
+            build(rc, mid + 1, r);
+            pushup(u);
         };
         build(1, 1, n);
     }
-
-    void pull(int p) {
-        info[p] = info[2 * p] + info[2 * p + 1];
+    void rangeAdd(int l, int r, T val)
+    {
+        rangeAdd(1, 1, n, l, r, val);
+    }
+    T rangeQuerySum(int l, int r)
+    {
+        return rangeQuerySum(1, 1, n, l, r);
     }
 
-    void apply(int p, const Tag &v, int l = 0, int r = 0) {
-        info[p].apply(v, r - l + 1);
-        tag[p].apply(v);
+private:
+    int n;
+    std::vector<Node> tr;
+    void pushup(int u)
+    {
+        tr[u].sum = tr[lc].sum + tr[rc].sum;
     }
-
-    void push(int p, int l = 0, int r = 0) {
-        int m = (l + r) >> 1;
-        apply(2 * p, tag[p], l, m);
-        apply(2 * p + 1, tag[p], m + 1, r);
-        tag[p] = Tag();
+    void pushdown(Node &u, T add)
+    {
+        u.sum += add * (u.r - u.l + 1);
+        u.add += add;
     }
-
-    void modify(int p, int l, int r, int x, const Info &v) {
-        if (l == r) {
-            info[p] = v;
+    void pushdown(int u)
+    {
+        if (tr[u].add)
+        {
+            pushdown(tr[lc], tr[u].add);
+            pushdown(tr[rc], tr[u].add);
+            tr[u].add = 0;
+        }
+    }
+    void rangeAdd(int u, int l, int r, int x, int y, T k)
+    {
+        if (x <= l && y >= r)
+        {
+            pushdown(tr[u], k);
             return;
         }
-        int m = (l + r) / 2;
-        push(p, l, r);
-        if (x <= m) {
-            modify(2 * p, l, m, x, v);
-        } else {
-            modify(2 * p + 1, m + 1, r, x, v);
+        int mid = (l + r) >> 1;
+        pushdown(u);
+        if (x <= mid)
+        {
+            rangeAdd(lc, l, mid, x, y, k);
         }
-        pull(p);
+        if (y > mid)
+        {
+            rangeAdd(rc, mid + 1, r, x, y, k);
+        }
+        pushup(u);
     }
-
-    void modify(int p, const Info &v) {
-        modify(1, 1, n, p, v);
-    }
-    Info rangeQuery(int p, int l, int r, int x, int y) {
-        if (l >= x && r <= y) {
-            return info[p];
+    T rangeQuerySum(int u, int l, int r, int x, int y)
+    {
+        if (x <= l && y >= r)
+        {
+            return tr[u].sum;
         }
-        int m = (l + r) / 2;
-        push(p, l, r);
-        if (y <= m) {
-            return rangeQuery(2 * p, l, m, x, y);
-        } else if (x > m) {
-            return rangeQuery(2 * p + 1, m + 1, r, x, y);
-        } else {
-            return rangeQuery(2 * p, l, m, x, y) + rangeQuery(2 * p + 1, m + 1, r, x, y);
+        int mid = (l + r) >> 1;
+        pushdown(u);
+        T res = 0;
+        if (x <= mid)
+        {
+            res += rangeQuerySum(lc, l, mid, x, y);
         }
-    }
-    Info rangeQuery(int l, int r) {
-        return rangeQuery(1, 1, n, l, r);
-    }
-
-    void rangeApply(int p, int l, int r, int x, int y, const Tag &v) {
-        if (l > y || r < x) {
-            return;
-        }
-        if (l >= x && r <= y) {
-            apply(p, v, l, r);
-            return;
-        }
-        int m = (l + r) / 2;
-        push(p, l, r);
-        rangeApply(2 * p, l, m, x, y, v);
-        rangeApply(2 * p + 1, m + 1, r, x, y, v);
-        pull(p);
-    }
-
-    void rangeApply(int l, int r, const Tag &v) {
-        return rangeApply(1, 1, n, l, r, v);
-    }
-
-    template<class F>
-    int findFirst(int p, int l, int r, int x, int y, F &&pred) {
-        if (l > y || r < x) {
-            return -1;
-        }
-        if (l >= x && r <= y && !pred(info[p])) {
-            return -1;
-        }
-        if (r == l) {
-            return l;
-        }
-        int m = (l + r) / 2;
-        push(p,l,r);
-        int res = findFirst(2 * p, l, m, x, y, pred);
-        if (res == -1) {
-            res = findFirst(2 * p + 1, m + 1, r, x, y, pred);
+        if (y > mid)
+        {
+            res += rangeQuerySum(rc, mid + 1, r, x, y);
         }
         return res;
     }
+};
+```
 
-    template<class F>
-    int findFirst(int l, int r, F &&pred) {
-        return findFirst(1, 1, n, l, r, pred);
+乘标记和加标记的处理方法：
+
+区间乘和区间加两个操作，关键在于维护乘法标记和加法标记之间的关系
+
+具体地说，我们在下传标记时，采用的计算和的方法为![image](https://cdn.nlark.com/yuque/__latex/cbbf4761b94444051ec5e90fe1d9e34e.svg)，那么我们就要保证下传标记的时候正确操作，即![image](https://cdn.nlark.com/yuque/__latex/1d19b58f9864e03822771165dab68b35.svg),![image](https://cdn.nlark.com/yuque/__latex/f7014f7d795c75c9cd2162e2dd9faf52.svg)
+
+覆盖标记和加标记的处理方法：
+
+区间覆盖和区间加，关键在于懒标记之间的清除关系，在我们操作![image](https://cdn.nlark.com/yuque/__latex/8c7a5bbfa95ebd42fdb35f17d6e00cc4.svg)标记时，要清空对应位置的![image](https://cdn.nlark.com/yuque/__latex/7dd2af96399916d1009e67e99e1f60eb.svg)标记，这样才能保证信息维护的正确性。具体来讲，什么叫清空对应位置的![image](https://cdn.nlark.com/yuque/__latex/2a11d10e5f1c1b171f06c38c6dfadab6.svg)标记呢？也就是说，一旦我们更新了![image](https://cdn.nlark.com/yuque/__latex/0a25ff5d5f49aeb7283b1b06cf5b55d5.svg)位置的![image](https://cdn.nlark.com/yuque/__latex/8c7a5bbfa95ebd42fdb35f17d6e00cc4.svg)信息，我们就要立刻把![image](https://cdn.nlark.com/yuque/__latex/77c3adce895348f6083c425fe1ba2624.svg)位置的![image](https://cdn.nlark.com/yuque/__latex/2a11d10e5f1c1b171f06c38c6dfadab6.svg)信息清除掉，因为显然他不会再起到作用，而且在![image](https://cdn.nlark.com/yuque/__latex/17a0042cf8bb0b5dac93b7dea1780afe.svg)的时候我们要先处理![image](https://cdn.nlark.com/yuque/__latex/8c7a5bbfa95ebd42fdb35f17d6e00cc4.svg)标记，原因仍然是我们可能会清除![image](https://cdn.nlark.com/yuque/__latex/2a11d10e5f1c1b171f06c38c6dfadab6.svg)标记
+
+### 维护最大子段和
+
+支持单点修改和区间查询最大子段和，不支持区间修改操作。
+
+```cpp
+template <class T>
+class SegmentTree
+{
+#define lc u << 1
+#define rc u << 1 | 1
+
+public:
+    struct Node
+    {
+        int l, r;
+        T sum, lmax, rmax, max;
+    };
+    SegmentTree(const std::vector<T> &a) : n(a.size()), tr(n * 4)
+    {
+        n--;
+        std::function<void(int, int, int)> build = [&](int u, int l, int r)
+        {
+            tr[u] = {l, r, a[l], a[l], a[l], a[l]};
+            if (l == r)
+            {
+                return;
+            }
+            int mid = l + r >> 1;
+            build(lc, l, mid);
+            build(rc, mid + 1, r);
+            pushup(tr[u], tr[lc], tr[rc]);
+        };
+        build(1, 1, n);
+    }
+    T rangeQuery(int x, int y)
+    {
+        Node ans = rangeQuery(1, 1, n, x, y);
+        return ans.max;
     }
 
-    template<class F>
-    int findLast(int p, int l, int r, int x, int y, F &&pred) {
-        if (l > y || r < x) {
-            return -1;
-        }
-        if (l >= x && r <= y && !pred(info[p])) {
-            return -1;
-        }
-        if (r == l) {
-            return l;
-        }
-        int m = (l + r) / 2;
-        push(p,l,r);
-        int res = findLast(2 * p + 1, m + 1, r, x, y, pred);
-        if (res == -1) {
-            res = findLast(2 * p, l, m, x, y, pred);
-        }
-        return res;
+private:
+    int n;
+    std::vector<Node> tr;
+
+    void pushup(Node &u, Node l, Node r)
+    {
+        u.sum = l.sum + r.sum;
+        u.lmax = std::max(l.lmax, l.sum + r.lmax);
+        u.rmax = std::max(r.rmax, r.sum + l.rmax);
+        u.max = std::max({l.max, r.max, l.rmax + r.lmax});
     }
 
-    template<class F>
-    int findLast(int l, int r, F &&pred) {
-        return findLast(1, 1, n, l, r, pred);
+    Node rangeQuery(int u, int l, int r, int x, int y)
+    {
+        if (x <= l && y >= r)
+        {
+            return tr[u];
+        }
+        int mid = l + r >> 1;
+        if (y <= mid)
+        {
+            return rangeQuery(lc, l, mid, x, y);
+        }
+        if (x > mid)
+        {
+            return rangeQuery(rc, mid + 1, r, x, y);
+        }
+        Node t;
+        pushup(t, rangeQuery(lc, l, mid, x, y), rangeQuery(rc, mid + 1, r, x, y));
+        return t;
     }
 };
-
-int mod;
-
-struct Tag {
-    int add = 0, mul = 1;
-
-    Tag(int add_ = 0, int mul_ = 1) : add(add_), mul(mul_) {};
-
-    void apply(Tag t) {
-        add = (add * t.mul + t.add) % mod;
-        mul = (mul * t.mul) % mod;
-    }
-};
-
-struct Info {
-    int sum = 0;
-
-    Info(int sum_ = 0) : sum(sum_) {}
-
-    void apply(Tag t, int len) {
-        sum = (sum * t.mul + len * t.add) % mod;
-    }
-};
-
-Info operator+(Info a, Info b) {
-    return {(a.sum + b.sum)%mod};
-}
 ```
 
 \newpage
@@ -894,7 +829,7 @@ struct PerTrie {
 有 M 个操作，有以下两种操作类型：
 
 1. `A x`：添加操作，表示在序列末尾添加一个数 x，序列的长度 N 加 1 。
-2. `Q l r x`：询问操作，你需要找到一个位置 p，满足 l \le p \le r，使得：a[p] \oplus a[p+1] \oplus ... \oplus a[N] \oplus x 最大，输出最大值。
+2. `Q l r x`：询问操作，你需要找到一个位置 p，满足$l \le p \le r$，使得：$a[p] \oplus a[p+1] \oplus ... \oplus a[N] \oplus x$ 最大，输出最大值。
 
 ```cpp
 void solve(){
@@ -1384,7 +1319,7 @@ struct PreLineBase
 
 ## ST表
 
-#### 返回权值
+#### 返回权值（返回区间最大值,需要最小值就改max）
 
 ```cpp
 template <class T>
@@ -1418,7 +1353,7 @@ public:
 };
 ```
 
-#### 返回位置
+#### 返回位置（返回权值最大的下标）
 
 ```cpp
 template <class T>
@@ -1441,7 +1376,7 @@ public:
         {
             for (int i = 1; i + (1 << j) - 1 <= n; ++i)
             {
-                st[j][i] = (a[st[j - 1][i]] > a[st[j - 1][i + (1 << j - 1)]] ? st[j - 1][i] : st[j - 1][i + (1 << j - 1)]);
+                st[j][i] = (a[st[j - 1][i]] > a[st[j - 1][i + (1 << (j - 1))]] ? st[j - 1][i] : st[j - 1][i + (1 << (j - 1))]);
             }
         }
     }

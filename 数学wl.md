@@ -70,7 +70,7 @@ gospersHack
 
 **递推公式**
 
-[n,m] = [n-1,m-1]+(n-1)*[n-1,m]
+$[n,m] = [n-1,m-1]+(n-1)*[n-1,m]$
 
 从组合意义上讲即自己作为一个新的轮换 或者自己插入到已有的人的左边
 
@@ -92,21 +92,21 @@ gospersHack
 
 **递推公式**
 
-\{n,m\} = \{n-1,m-1\}+m*\{n-1,m\}
+$\{n,m\} = \{n-1,m-1\}+m*\{n-1,m\}$
 
 从组合意义上讲即自己作为一个新的子集 或者自己插入已有的子集中
 
 **常用公式**
 
-x^n = \sum_{k=0}^n\{n,k\}(x,k)k!
+$x^n = \sum_{k=0}^n\{n,k\}(x,k)k!$
 
 常用化简 n^m
 
-递推边界 \{ 0,0\} = 1
+递推边界 $\{0,0\} = 1$
 
 **计算公式**
 
-\{n,m\}=\sum_{i=0}^{m}\frac{(-1)^{m-i}i^n}{i!(m-i)!}
+$\{n,m\}=\sum_{i=0}^{m}\frac{(-1)^{m-i}i^n}{i!(m-i)!}$
 
 ## 筛法
 
@@ -136,7 +136,7 @@ void sieve(int n) {
 
 - **区间素数筛** P1835
 
-获取区间 [l,r] 中的所有素数，复杂度O(\sqrt{r} +(r-l)*loglog(r))
+获取区间 [l,r] 中的所有素数，复杂度$O(\sqrt{r} +(r-l)*loglog(r))$
 
 ```cpp
 std::vector<int> prime;
@@ -233,7 +233,7 @@ void sieve(int n) {
   
   fac[i] 表示数字 i 的**所有质因子个数** （包含相同质因子）
 
-fac[i]=d(n) = (a_1 + 1)(a_2 + 1) \dots (a_k + 1)
+$fac[i]=d(n) = (a_1 + 1)(a_2 + 1) \dots (a_k + 1)$
 
 ```cpp
 std::vector<int> minp,fac,primes;
@@ -349,15 +349,15 @@ void Mobius(int n) {
 
 ## 费马小定理
 
-若p为质数，且a,p互质，则a^{p-1} \equiv 1(mod\ \ p)
+若p为质数，且a,p互质，则$a^{p-1} \equiv 1(mod\ \ p)$
 
-a*a^{p-2} = a^{p-1} \equiv 1 (mod\ \ p)
+$a*a^{p-2} = a^{p-1} \equiv 1 (mod\ \ p)$
 
 所以快速幂求a模意义下的逆元就是qpow(a,mod-2) 只适用于p为质数
 
 ## 欧拉函数
 
-定义：1~n中与n互质的数的个数，记为\phi(n) = \Pi_{i=1}^s\frac{p_i-1}{p_i}
+定义：1~n中与n互质的数的个数，记为$\phi(n) = \Pi_{i=1}^s\frac{p_i-1}{p_i}$
 
 ```cpp
 int get_phi(int x) {
@@ -375,7 +375,7 @@ int get_phi(int x) {
 
 ## 欧拉定理
 
-若gcd(a,m)=1 ，则a^{\phi(m)} \equiv 1 (mod \ \ m)
+若gcd(a,m)=1 ，则 $a^{\phi(m)} \equiv 1 (mod \ \ m)$
 
 ### 扩展欧拉定理
 
@@ -393,11 +393,11 @@ $$
 
 ## 威尔逊定理
 
-(p-1)! \equiv-1(mod \ \ p) 是p为质数的充分必要条件
+$(p-1)! \equiv-1(mod \ \ p)$ 是p为质数的充分必要条件
 
 ### 推论:
 
-- 若p是质数，则(p-1)!+1 \equiv0 (mod p)
+- 若p是质数，则$(p-1)!+1 \equiv0 (mod p)$
 
 - 若p是大于4的合数，则(p-1)!\equiv0 (mod p)
 
@@ -409,13 +409,13 @@ $$
 
 - 一定存在整数x,y 满足 ax + by = gcd(a,b) * n
 
-- 一定存在整数X_1 ...X_i 满足\sum_{i=1}^n A_iX_i=gcd(A_1,A_2,...,A_n)
+- 一定存在整数$X_1 ...X_i$ 满足$\sum_{i=1}^n A_iX_i=gcd(A_1,A_2,...,A_n)$
 
 \newpage
 
 ## 扩展欧几里得算法
 
-求 a*x+b*y=gcd(a,b) 的特解(x_0,y_0)
+求 a*x+b*y=gcd(a,b) 的特解$(x_0,y_0)$
 
 ```cpp
 //扩展欧几里得算法
@@ -535,7 +535,7 @@ T EXCRT(const std::vector<T> &m, const std::vector<T> &r) { //有x=r1(mod m1),x=
 
 求解高次同余方程
 
-给定整数a,b,p, a,p互质( a,p不互质时用exbsgs ),求满足a^x \equiv b(mod\ \ p) 的最小非负整数 x
+给定整数a,b,p, a,p互质( a,p不互质时用exbsgs ),求满足$a^x \equiv b(mod\ \ p)$ 的最小非负整数 x
 
 *bsgs本身复杂度是log(p)的，这个板子用的map,复杂度带个log,tle的话换umap试试*
 
@@ -852,8 +852,6 @@ Matrix power(Matrix a, i64 b) {
     return ans;
 }
 ```
-
-
 
 \newpage
 
