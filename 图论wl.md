@@ -22,6 +22,8 @@
 
 树的重心定义为，当树以重心为根时，每个子树的大小不超出$n/2$。
 
+即最大的子树大小 $siz*2<=n$ 
+
 性质：一棵树最多只能有两个重心。
 
 求重心的方法：
@@ -685,6 +687,54 @@ struct DSUOnTree
     {
         preProcess(root, 0); // 假设根节点是1
         solve(root, 0, true);
+    }
+};
+```
+
+\newpage
+
+## 虚树
+
+虚树是指我们在原本树的基础上抽离出一颗新的树，虚树只由关键点以及关键点的$LCA$构成，在预处理一些信息以后我们可以在虚树上求解只涉及关键点的答案。复杂度由$O(n)$降为$O(V)$，其中$V$为关键点的数量。
+
+构建方法：
+
+因为多个点的$LCA$可能是同一个点，为了保证复杂度我们不能多次加入。
+
+我们首先将关键点集合按$dfn$序排序，然后将相邻点的$lca$加入点集。
+
+之后再次按$dfn$序排序并去重。然后把相邻的两个点$(u,v)$连边$lca(u,v)->v$ 
+
+```cpp
+template <class T>
+struct VirtualTreePre
+{
+    TreePre<T> pre;
+    int root;
+    std::vector<std::vector<std::pair<int, int>>> vt;
+    VirtualTreePre(std::vector<std::vector<std::pair<int, int>>> &g, int root) : pre(g, root), root(root), vt(g.size()) {}
+
+    void build(std::vector<int> a)
+    {
+        a.push_back(root); //加入根节点方便DP,根据题目情况判断是否加root
+        std::sort(begin(a), end(a), [&](int u, int v)
+                  { return pre.dfn[u] < pre.dfn[v]; });
+        for (int i = a.size() - 1; i; --i)
+        {
+            a.push_back(pre.getLca(a[i], a[i - 1]));
+        }
+        std::sort(begin(a), end(a), [&](int u, int v)
+                  { return pre.dfn[u] < pre.dfn[v]; });
+        a.erase(std::unique(begin(a), end(a)), end(a));
+        for (auto u : a)
+        {
+            vt[u].clear();
+        }
+        for (int i = 1; i < a.size(); ++i)
+        {
+            int lca = pre.getLca(a[i], a[i - 1]);
+            vt[lca].emplace_back(a[i], pre.dis[a[i]] - pre.dis[lca]);
+        }
     }
 };
 ```
