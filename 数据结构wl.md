@@ -270,6 +270,8 @@ private:
 };
 ```
 
+\newpage
+
 ### 维护区间修改
 
 ```cpp
@@ -383,6 +385,8 @@ private:
 
 区间覆盖和区间加，关键在于懒标记之间的清除关系，在我们操作$cover$标记时，要清空对应位置的$add$标记，这样才能保证信息维护的正确性。具体来讲，什么叫清空对应位置的$add$标记呢？也就是说，一旦我们更新了$u$位置的$cover$信息，我们就要立刻把$u$位置的$add$信息清除掉，因为显然他不会再起到作用，而且在$pushdown$的时候我们要先处理$cover$标记，原因仍然是我们可能会清除$add$标记
 
+\newpage
+
 ### 维护最大子段和
 
 支持单点修改和区间查询最大子段和，不支持区间修改操作。
@@ -453,6 +457,103 @@ private:
         Node t;
         pushup(t, rangeQuery(lc, l, mid, x, y), rangeQuery(rc, mid + 1, r, x, y));
         return t;
+    }
+};
+```
+
+### 动态开点
+
+往往我们的序列非常大，但大多数为空，我们并不需要维护整个序列的信息，因此我们可以采用动态开空间的方法，于是有动态开点线段树，具体的说，就是用到哪里的空间就开哪里的空间,我们每需要访问一个节点$u$，假如节点$u$尚未分配空间，我们手动为其开空间即可，因为操作次数往往有限，每次操作我们最多开$logn$的空间，所以空间复杂度是$qlogn$的
+
+```cpp
+template <class T>
+class SegmentTree
+{
+public:
+    SegmentTree(int capacity, int min, int max) : max(max), min(min)
+    {
+        lc.assign(capacity + 1, 0);
+        rc.assign(capacity + 1, 0);
+        sum.assign(capacity + 1, 0);
+        add.assign(capacity + 1, 0);
+    }
+
+    void rangeAdd(int l, int r, T val)
+    {
+        rangeAdd(root, min, max, l, r, val);
+    }
+    T rangeQuerySum(int l, int r)
+    {
+        return rangeQuerySum(root, min, max, l, r);
+    }
+
+private:
+    int min,
+        max;
+    int tot = 0;
+    int root = 0;
+    std::vector<int> lc, rc;
+    std::vector<T> sum, add;
+    void pushup(int u)
+    {
+        sum[u] = sum[lc[u]] + sum[rc[u]];
+    }
+    void pushdown(int u, int l, int r)
+    {
+        if (add[u])
+        {
+            lc[u] = (lc[u] ? lc[u] : ++tot);
+            rc[u] = (rc[u] ? rc[u] : ++tot);
+            int mid = (l + r) >> 1;
+            sum[lc[u]] += (mid - l + 1) * add[u];
+            sum[rc[u]] += (r - mid) * add[u];
+            add[lc[u]] += add[u];
+            add[rc[u]] += add[u];
+            add[u] = 0;
+        }
+    }
+    void rangeAdd(int &u, int l, int r, int x, int y, T val)
+    { // 区修
+        if (!u)
+        {
+            u = ++tot; // 动态开点
+        }
+        if (x <= l && r <= y)
+        {
+            sum[u] += val * (r - l + 1);
+            add[u] += val;
+            return;
+        }
+        pushdown(u, l, r);
+        int mid = (l + r) >> 1;
+        if (x <= mid)
+        {
+            rangeAdd(lc[u], l, mid, x, y, val);
+        }
+        if (y > mid)
+        {
+            rangeAdd(rc[u], mid + 1, r, x, y, val);
+        }
+        pushup(u);
+    }
+    T rangeQuerySum(int u, int l, int r, int x, int y)
+    {
+        if (x <= l and y >= r)
+        {
+            return (u ? sum[u] : 0);
+        }
+        int mid = (l + r) >> 1;
+        pushdown(u, l, r);
+        T res = 0;
+        if (x <= mid)
+        {
+            res += rangeQuerySum(lc[u], l, mid, x, y);
+        }
+        if (y > mid)
+        {
+            res += rangeQuerySum(rc[u], mid + 1, r, x, y);
+        }
+        return res;
     }
 };
 ```
@@ -1597,4 +1698,189 @@ template <typename T>
 using MinBinomialHeap = mergeHeap<T, std::greater<T>>;
 template <typename T>
 using MaxBinomialHeap = mergeHeap<T, std::less<T>>;
+```
+
+## 其他
+
+### 珂朵莉树
+
+珂朵莉树（ODT）用于维护序列，其核心是一个$Node(l,r,val)$的结构体$set$容器,其中![image](https://cdn.nlark.com/yuque/__latex/8597b8ad64ac82614635dd0459956516.svg)是$mutable$类型使得在$set$中该值可以被修改。那么$set$会自动按照左端点升序排序，每个节点都代表一个区间，该区间内每个位置的值相同，都为对应的$val$。
+
+其核心操作为$split$和$assign$,分裂和覆盖，在数据随机的情况下$assign$可以保证区间数量不会很多进而保证复杂度。
+
+```cpp
+template <class T>
+class ODT
+{
+
+private:
+    const T inf = std::numeric_limits<T>::max() / 2;
+    struct Node
+    {
+        int l, r;      // 区间左右端点（闭区间 [l, r]）
+        mutable T val; // 值（mutable 允许在 set 中修改值）
+
+        // 用于 set 排序的运算符：按左端点 l 从小到大排序
+        bool operator<(const Node &a) const
+        {
+            return l < a.l;
+        }
+
+        // 构造函数：默认构造一个单点区间或指定区间
+        Node(int L, int R, T Val) : l(L), r(R), val(Val) {}
+    };
+    std::set<Node> s;                             // 有序集合存储所有区间节点，自动按左端点排序
+    using IT = typename std::set<Node>::iterator; // 使用using代替#define
+
+public:
+    ODT()
+    {
+        // 初始化时插入一个虚拟节点作为哨兵（防止越界）
+        // 哨兵节点的右边界设为极大值，确保所有合法区间都在其左侧
+        s.insert(Node(0, inf, 0)); // 假设数据范围为 0~1e9，可根据实际需求调整
+    }
+
+    IT split(int pos)
+    {
+        /*
+         * 功能：将区间在 pos 处分裂为 [l, pos-1] 和 [pos, r] 两段
+         * 返回值：后半段 [pos, r] 的迭代器
+         * 原理：利用 set 的有序性找到第一个左端点 >= pos 的节点，
+         *       若该节点左端点等于 pos，说明已存在分裂点，直接返回；
+         *       否则分裂前一个节点，生成两个新区间
+         */
+        IT it = s.lower_bound(Node(pos)); // 找到第一个左端点 >= pos 的节点
+        if (it != s.end() && it->l == pos)
+        {
+            // 若存在左端点为 pos 的节点，直接返回（已分裂过）
+            return it;
+        }
+        // 否则需要分裂前一个节点
+        it--;                     // 移动到前一个节点（该节点的 l < pos <= r）
+        int L = it->l, R = it->r; // 原节点的左右边界
+        T Val = it->val;          // 原节点的值
+        s.erase(it);              // 删除原节点
+        // 插入左半段 [L, pos-1]
+        s.insert(Node(L, pos - 1, Val));
+        // 插入右半段 [pos, R] 并返回其迭代器
+        return s.insert(Node(pos, R, Val)).first;
+    }
+
+    void assign(int l, int r, T val)
+    {
+        /*
+         * 功能：将区间 [l, r] 内的所有值覆盖为 val
+         * 步骤：
+         * 1. 分裂右端点 r+1，得到后半段迭代器 itr
+         * 2. 分裂左端点 l，得到前半段迭代器 itl
+         * 3. 删除 [itl, itr) 区间内的所有节点（即原 [l, r] 区间的所有分段）
+         * 4. 插入新节点 [l, r, val] 表示覆盖后的区间
+         */
+        IT itr = split(r + 1);     // 分裂出 [r+1, ...]
+        IT itl = split(l);         // 分裂出 [l, ...]
+        s.erase(itl, itr);         // 删除 [l, r] 区间内的所有旧分段
+        s.insert(Node(l, r, val)); // 插入新的覆盖区间
+    }
+
+    void add(int l, int r, T val)
+    {
+        /*
+         * 功能：将区间 [l, r] 内的所有值增加 val
+         * 步骤：
+         * 1. 分裂区间两端点，确保 [l, r] 是若干连续节点的集合
+         * 2. 遍历 [itl, itr) 区间内的所有节点，逐个增加 val
+         */
+        IT itr = split(r + 1); // 分裂右端点
+        IT itl = split(l);     // 分裂左端点
+        for (; itl != itr; ++itl)
+        {
+            itl->val += val; // 对每个节点的值进行加法操作
+        }
+    }
+
+    T kth(int l, int r, int k)
+    {
+        /*
+         * 功能：查询区间 [l, r] 内的第 k 小值（k 从 1 开始）
+         * 步骤：
+         * 1. 分裂区间两端点，获取所有包含在 [l, r] 内的节点
+         * 2. 收集这些节点的值和长度，按值排序
+         * 3. 遍历排序后的节点，累加长度直到找到第 k 小值
+         */
+        std::vector<std::pair<T, int>> vp; // 存储（值，区间长度）
+        IT itr = split(r + 1);             // 分裂右端点
+        IT itl = split(l);                 // 分裂左端点
+        for (; itl != itr; ++itl)
+        {
+            vp.push_back({itl->val, itl->r - itl->l + 1});
+        }
+        std::sort(vp.begin(), vp.end()); // 按值从小到大排序
+        for (auto [val, len] : vp)
+        {
+            k -= len; // 扣除当前区间的长度
+            if (k <= 0)
+            { // 找到第 k 小值
+                return val;
+            }
+        }
+        return -1; // 若未找到（理论上不应发生）
+    }
+
+    T RangeQuery(int l, int r)
+    {
+        /*
+         * 功能：查询区间 [l, r] 内所有值的和
+         * 步骤：
+         * 1. 分裂区间两端点，获取所有包含在 [l, r] 内的节点
+         * 2. 遍历节点，计算每个节点的区间长度 × 值，累加求和
+         */
+        IT itr = split(r + 1); // 分裂右端点
+        IT itl = split(l);     // 分裂左端点
+        T res = 0;
+        for (; itl != itr; ++itl)
+        {
+            res += (itl->r - itl->l + 1) * itl->val; // 区间长度 × 值
+        }
+        return res;
+    }
+};
+```
+
+### 笛卡尔树
+
+笛卡尔树是把一个序列建立成一颗二叉搜索树，整棵树的中序遍为长度为$n$的顺序排列（即$(1,2,3,4...n)$,同时满足堆的性质，以小根堆为例,也就是$val[x]\leq val[lc[x]],val[x] \leq val[rc[x]]$
+
+性质：笛卡尔树每个点的子树下标连续,同时子树的根是子树中值最小/最大的节点。
+
+构建过程（小根堆笛卡尔树）：我们按元素的下标插入，设当前插入的下标为![image](https://cdn.nlark.com/yuque/__latex/2443fbcfeb7e85e1d62b6f5e4f27207e.svg),显然新插入的元素应该在树的最右边，那么我们用一个栈维护最右边的树链，通过不断弹出栈顶来从链底开始向上遍历直到找到一个![image](https://cdn.nlark.com/yuque/__latex/036441a335dd85c838f76d63a3db2363.svg)满足![image](https://cdn.nlark.com/yuque/__latex/8d306d131bed8365b2bf332a93081831.svg)，那么我们把![image](https://cdn.nlark.com/yuque/__latex/2443fbcfeb7e85e1d62b6f5e4f27207e.svg)置为![image](https://cdn.nlark.com/yuque/__latex/036441a335dd85c838f76d63a3db2363.svg)的右儿子，把链底到![image](https://cdn.nlark.com/yuque/__latex/036441a335dd85c838f76d63a3db2363.svg)通过栈弹出的这条链作为![image](https://cdn.nlark.com/yuque/__latex/2443fbcfeb7e85e1d62b6f5e4f27207e.svg)的左儿子。
+
+显然该过程可以保证笛卡尔树的两个性质，由于每个点只会入栈一次和出栈一次，复杂度为![image](https://cdn.nlark.com/yuque/__latex/e65a67ac353abeeff44c359310d05c02.svg)
+
+请注意:只有在权值两两不同时建出的笛卡尔树才唯一
+
+```cpp
+class DescartesTree
+{
+public:
+    int n, root;
+    std::vector<int> lc, rc;
+    DescartesTree(std::vector<int> &a) : n(a.size) - 1, lc(n + 1), rc(n + 1)
+    {
+        root = std::min_element(begin(a) + 1, end(a)) - begin(a);
+        std::vector<int> stk(n + 1, 0);
+        int top = 0;
+        for (int i = 1; i <= n; ++i)
+        {
+            int k = top;
+            while (k and a[stk[k]] > a[i])
+                --k;
+            if (k)
+                rc[stk[k]] = i;
+            if (k < top)
+                lc[i] = stk[k + 1];
+            stk[++k] = i;
+            top = k;
+        }
+    }
+};
 ```
