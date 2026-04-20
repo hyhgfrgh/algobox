@@ -1,4 +1,4 @@
-# 数学
+\newpage
 
 ## 组合数学
 
@@ -61,6 +61,8 @@ gospersHack
     }
     cout<<"\n";
 ```
+
+\newpage
 
 ### 斯特林数
 
@@ -134,6 +136,8 @@ void sieve(int n) {
 }
 ```
 
+\newpage
+
 - **区间素数筛** P1835
 
 获取区间 [l,r] 中的所有素数，复杂度$O(\sqrt{r} +(r-l)*loglog(r))$
@@ -199,9 +203,11 @@ void Phi(int n) {
 }
 ```
 
-- 筛法求每个数 **不同质因子的个数**
-  
-  fac[i] 表示数字 i 的**不同质因子个数**
+\newpage
+
++ 筛法求每个数 **不同质因子的个数**
+
+fac[i] 表示数字 i 的**不同质因子个数**
 
 ```cpp
 std::vector<int> minp, fac, primes;
@@ -254,6 +260,8 @@ void prime_fac(int n){
     }
 }
 ```
+
+\newpage
 
 - 筛法求因子个数
 
@@ -317,6 +325,8 @@ void factors(int n){
     }
 }
 ```
+
+\newpage
 
 - 筛法求莫比乌斯函数
 
@@ -907,3 +917,238 @@ std::vector<std::pair<ll, ll>> ceilBlock(ll n)
     return res;
 }
 ```
+
+## 计算几何
+
+### 平面几何
+
+```cpp
+typedef long double T;
+struct pt{
+    T x,y;
+    pt(const T& x_ = 0,const T& y_ = 0):x(x_),y(y_){}
+    pt operator+(pt p){return {x+p.x,y+p.y};}
+    pt operator-(pt p){return {x-p.x,y-p.y};}
+    pt operator*(T d){return {x*d,y*d};}
+    pt operator/(T d){return {x/d,y/d};}
+    bool operator==(const pt& b){return x == b.x && y == b.y;}
+    bool operator!=(const pt& b){return !(*this == b);}
+    bool operator<(const pt& b) const {
+        if (abs(x - b.x) > 1e-9) return x < b.x;
+        return y < b.y - 1e-9;
+    }
+};
+T sq(pt p){return p.x*p.x+p.y*p.y;}
+T absv(pt p){return sqrtl(sq(p));}
+pt scale(pt c,T factor,pt p){
+    return c+(p-c)*factor;
+}
+pt rot(const pt& p,T a){
+    return {p.x*cosl(a)-p.y*sinl(a),p.x*sinl(a)+p.y*cosl(a)};
+}
+pt perp(const pt& p){
+    return {-p.y,p.x};
+}
+// 以下(大写字母表示向量)
+// 点积: A*B = |a|*|b|*cos(angle)
+T dot(pt v,pt w){ return v.x*w.x+v.y*w.y;}
+
+bool isPerp(const pt& v,const pt& w){return dot(v,w) == 0;}
+
+// 叉积: A*B = |a|*|b|*sin(angle)
+// V到W的夹角,cross(v, w) > 0 ==> sin(θ) > 0 ==> w 在 v 的逆时针方向
+T cross(pt v,pt w){return v.x*w.y-v.y*w.x;}
+
+T angle(pt v,pt w){ // tan = sin/cos
+    return abs(atan2l(cross(v,w), dot(v,w)));
+}
+T orient(pt a,pt b,pt c){ return cross(b-a, c-a);}
+bool inAngle(pt a,pt b,pt c,pt p){
+    assert(orient(a, b, c) != 0);
+    if(orient(a, b, c)<0) swap(b,c);
+    return orient(a, b, p)>=0 && orient(a, c, p)<=0;
+}
+bool half(pt p){
+    return p.y>0 || (p.y == 0 && p.x>0);
+}
+bool cmpPolar(pt x,pt y){
+    int tx = half(x),ty = half(y);
+    if(tx!=ty) return tx<ty;
+    else return x.y*y.x<y.y*x.x;
+}
+
+struct line{
+    pt v;T c; // v 为直线的方向向量
+    line(pt v_,T c_):v(v_),c(c_){}
+    // 直线方程a*x + b*y + c = 0,方向向量(b,-a)
+    line(T a,T b,T c):v({b,-a}),c(c){}
+    line(pt p,pt q):v(q-p),c(cross(v, p)){}
+};
+T side(line ln,pt p) {return cross(ln.v,p)-ln.c;} // a*x+b*y-c    正负是方向向量v转到p的旋转方向
+T dist(line ln,pt p) {return abs(side(ln,p))/absv(ln.v);}
+T sqDist(line ln,pt p) {return side(ln,p)*side(ln,p)/sq(ln.v);}
+line perpThrough(line ln,pt p){ return {p,p+perp(ln.v)};}
+bool inter(line l1,line l2,pt &out){ // 求两直线交点
+    T d = cross(l1.v, l2.v);
+    if(d == 0) return false;
+    out = (l2.v*l1.c-l1.v*l2.c)/d;
+    return true;
+}
+
+bool cmpProj(line ln,pt p,pt q){ // 根据点在直线上的投影排序
+    return dot(ln.v,p) < dot(ln.v,q);
+}
+line translate(line ln,pt t){ // 平移
+    // a(x-t.x)*b(y-t.y)=c   a*t.x + b*t.y = cross(ln.v,t)
+    return {ln.v,ln.c+cross(ln.v,t)};
+}
+pt proj(line ln,pt p){ // 正交投影 
+    return p-perp(ln.v)*side(ln,p)/sq(ln.v); // perp(ln.v)*side(ln,p)/sq(ln.v)是垂点到p的向量z
+}
+pt refl(line ln,pt p){ // 反射投影
+    return p-perp(ln.v)*2*side(ln, p)/sq(ln.v);
+}
+bool inDisk(pt a,pt b,pt p){ // 判断点p是否在直径为ab的圆内
+    return dot(a-p, b-p)<=0;
+}
+bool onSegment(pt a,pt b,pt p){ // 判断点p是否在线段ab
+    return orient(a, b, p) == 0 && inDisk(a, b, p);
+}
+bool properInter(pt a,pt b,pt c,pt d,pt& out){
+    T oa = orient(c, d, a),ob = orient(c, d, b),
+        oc = orient(a, b, c),od = orient(a, b, d);
+    if(oa*ob<0 && oc*od<0){
+        out = (a*ob-b*oa)/(ob-oa);
+        return true;
+    }
+    return false;
+}
+set<pt> inters(pt a,pt b,pt c,pt d){
+    pt out;
+    if(properInter(a, b, c, d, out)) return {out};
+    set<pt> res;
+    if(onSegment(c, d, a)) res.insert(a);
+    if(onSegment(c, d, b)) res.insert(b);
+    if(onSegment(a, b, c)) res.insert(c);
+    if(onSegment(a, b, d)) res.insert(d);
+    return res; // res.size() == 1表示两个线段的交点，res.size() == 2表示相交区域是线段，其中存的是这个线段的两个端点
+}
+T segPoint(pt a,pt b,pt p){
+    if(a != b){
+        line l(a,b);
+        if(cmpProj(l,a,p) && cmpProj(l, p, b))
+            return dist(l, p);
+        return min(absv(p-a),absv(p-b));
+    }
+    return absv(p-a);
+}
+T segSeg(pt a,pt b,pt c,pt d){
+    pt dummy;
+    if(properInter(a, b, c, d, dummy)) return 0;
+    return min({segPoint(a, b, c),segPoint(a, b, d),
+        segPoint(c, d, a),segPoint(c, d, b)});
+}
+T areaPolygon(vector<pt> p){ // 多边形的点需按顺序排列
+    T area = 0.0;
+    for(int i = 0,n = p.size();i<n;i++){
+        area += cross(p[i], p[(i+1)%n]);
+    }
+    return abs(area)/2.0;
+}
+bool above(pt a,pt p){
+    return p.y >= a.y;
+}
+bool crossesRay(pt a,pt p,pt q){
+    return (above(a, q)-above(a, p))*orient(a, p, q) > 0;
+}
+bool inPolygon(vector<pt> p,pt a,bool strict = true){
+    int numCrossings = 0;
+    for(int i = 0,n = p.size();i<n;i++){
+        if(onSegment(p[i], p[(i+1)%n], a)) return !strict;
+        numCrossings += crossesRay(a, p[i], p[(i+1)%n]);
+    }
+    return numCrossings&1;
+}
+```
+
+\newpage
+
+### 单峰函数与三分
+
+常见单峰函数：
+
+二次函数：其最值在对称轴取得
+
+绝对值函数：
+
+$f(x)=\sum_{i=1}^{n}abs(x-a_i)$是单峰函数，其最值在所有$a_i$的中位数取得
+
+整数三分
+
+```cpp
+int calc(int x)
+{
+
+}
+int search(int l, int r)
+{
+    const int corner = 2;
+    while (r - l > corner)
+    { // 精度到达三分间隔时停止
+        int m1 = l + (r - l) / 3;
+        int m2 = r - (r - l) / 3;
+
+        if (calc(m1) > calc(m2))
+        {
+            r = m2; // 左侧更优
+        }
+        else
+        {
+            l = m1; // 右侧更优
+        }
+    }
+    int res = l;
+    for (int i = l + 1; i <= r; ++i)
+    {
+        if (calc(i) > calc(res))
+        {
+            res = i;
+        }
+    }
+    return res;
+}
+```
+
+\newpage
+
+实数三分
+
+```cpp
+long double calc(long double x)
+{
+}
+
+long double search(long double l, long double r, long double epsilon = 1e-9)
+{
+    while (r - l > epsilon)
+    {
+        long double m1 = l + (r - l) / 3;
+        long double m2 = r - (r - l) / 3;
+        if (calc(m1) > calc(m2))
+        {
+            r = m2; // 左侧更优
+        }
+        else
+        {
+            l = m1; // 右侧更优
+        }
+    }
+    return (l + r) / 2; // 返回最优点
+}
+```
+
+三分套三分
+
+使用场景往往是面向二元函数$f(x,y)$,满足在固定$x$时$f(x,y)$随$y$变化是单峰的，那么我们对固定的$x$，可三分出最优的$y$。同时我们定义$g(x)=min/max(f(x,y))$，如果$g(x)$也是单峰的，即对于每个$x$在取到最优的$y$以后仍然保持单峰，那么就可以采用三分套三分。
+
+结论：多个下凸函数的$max$仍然是下凸函数，多个上凸函数的$min$仍然是上凸函数

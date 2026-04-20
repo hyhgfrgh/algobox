@@ -57,13 +57,11 @@ struct TreeCentroid
             }
         }
     }
-
     int findCentroid(int u)
     {
         dfsSize(u, 0);
         return getRoot(u, 0, siz[u]);
     }
-
 private:
     int getRoot(int u, int fa, int total_size)
     {
@@ -1081,3 +1079,232 @@ struct MinCostFlow {
 
 };
 ```
+
+## 欧拉图
+
+欧拉路径：经过每条边恰好一次的路径
+
+欧拉回路：经过每条边恰好一次并回到起点的路径
+
+欧拉图：有欧拉回路的图被称作欧拉图
+
+半欧拉图：没有欧拉回路但有欧拉路径的图被称作半欧拉图
+
+欧拉图判断条件：
+
+对于连通图$G$，如下三个性质等价：
+
+1：$G$是欧拉图。
+
+2：对于无向图，$G$中所有顶点的度数都是偶数；对于有向图，每个点入度等于出度。
+
+3：$G$可以被分解成若干条不共边的回路。
+
+半欧拉图判断条件：
+
+对于有向图：有一个点$in=out+1$,有一个点$out=in+1$,其余点$in=out$
+
+对于无向图，有两个点$deg$为奇数。
+
+显然对于有向图和无向图，两个特殊点都是欧拉通路的两个端点。
+
+### 无向图
+
+注意代码求出的是字典序最小的欧拉路。
+
+```cpp
+class UndirectedEulerRoad
+{
+public:
+    int n, m;
+    // pair.first: 目标节点 v, pair.second: 边的全局唯一 ID
+    std::vector<std::vector<std::pair<int, int>>> g;
+    std::vector<int> cnt, deg, road;
+    std::vector<bool> vis_edge; // 记录某条边是否被走过（替代繁琐的反向边删除）
+
+    UndirectedEulerRoad(int _n) : n(_n), m(0), g(_n + 1)
+    {
+        cnt.assign(n + 1, 0);
+        deg.assign(n + 1, 0);
+    }
+
+    void addEdge(int u, int v)
+    {
+        // 赋予这条边一个唯一的编号 m
+        g[u].push_back({v, m});
+        g[v].push_back({u, m});
+        deg[u]++;
+        deg[v]++;
+        m++; // 总边数加 1
+    }
+
+    void hierholzer(int x)
+    {
+        while (cnt[x] < g[x].size())
+        {
+            auto [v, id] = g[x][cnt[x]++];
+            // 如果这条边（包含它的反向边）已经被走过，直接跳过
+            if (vis_edge[id]) continue; 
+
+            vis_edge[id] = true; // 标记边已走
+            hierholzer(v);
+        }
+        road.push_back(x);
+    }
+
+    int work()
+    {
+        vis_edge.assign(m, false);
+
+        // 保证字典序，pair 默认先比较 first(即节点 v)，这正是我们需要的
+        for (int i = 1; i <= n; ++i)
+        {
+            std::sort(begin(g[i]), end(g[i]));
+        }
+
+        int start = -1, first_odd = -1;
+        int odd_cnt = 0;
+
+        for (int i = 1; i <= n; ++i)
+        {
+            // 备选起点：如果有度数，可以作为回路的起点（保证字典序找编号最小的）
+            if (deg[i] > 0 && start == -1) start = i; 
+
+            if (deg[i] % 2 != 0) // 无向图只需要看度数的奇偶性
+            {
+                odd_cnt++;
+                if (first_odd == -1) first_odd = i; // 记录编号最小的奇数点
+            }
+        }
+
+        // 图全空
+        if (start == -1) return 1;
+
+        // 无向图欧拉路径只有两种情况：0 个奇点(回路) 或 2 个奇点(通路)
+        if (odd_cnt != 0 && odd_cnt != 2) return 0;
+
+        // 如果是通路，起点必须是编号最小的奇数点（为了字典序）
+        if (odd_cnt == 2) start = first_odd;
+
+        hierholzer(start);
+
+        // 连通性校验：防止图中有未走到的孤立边或环
+        if (road.size() != m + 1) return 0;
+
+        return (odd_cnt == 2 ? 1 : 2); // 1表示通路，2表示回路
+    }
+
+    auto getRoad()
+    {
+        std::reverse(begin(road), end(road));
+        return road;
+    }
+};
+```
+
+### 有向图
+
+注意代码求出的是字典序最小的欧拉路。
+
+```cpp
+class DirectedEulerRoad
+{
+public:
+    int n, m;                         // m 用于最后判断是否连通
+    std::vector<std::vector<int>> g;  // 有向图不需要 exist 标记，直接存目标点即可
+    std::vector<int> cnt, in, out, road;
+
+    DirectedEulerRoad(int _n) : n(_n), m(0), g(_n + 1)
+    {
+        cnt.assign(n + 1, 0);
+        in.assign(n + 1, 0), out.assign(n + 1, 0);
+    }
+
+    void addEdge(int u, int v)
+    {
+        g[u].push_back(v);
+        in[v]++;
+        out[u]++;
+        m++; // 统计总边数
+    }
+
+    void hierholzer(int x)
+    {
+        while (cnt[x] < g[x].size())
+        {
+            int v = g[x][cnt[x]++];
+            hierholzer(v);
+        }
+        road.push_back(x);
+    }
+
+    int work()
+    {
+        // 保证字典序
+        for (int i = 1; i <= n; ++i)
+        {
+            std::sort(begin(g[i]), end(g[i]));
+        }
+
+        int start = -1;
+        int tot1 = 0, tot2 = 0;
+
+        for (int i = 1; i <= n; ++i)
+        {
+            // 如果是回路，备选一个有出度的点作起点
+            if (out[i] > 0 && start == -1) start = i; 
+
+            if (in[i] != out[i])
+            {
+                if (out[i] - in[i] == 1) {
+                    start = i; // 通路必须从 out 比 in 大 1 的点出发
+                    tot1++;
+                } else if (in[i] - out[i] == 1) {
+                    tot2++;
+                } else {
+                    return 0; // 度数差大于1，绝对无解
+                }
+            }
+        }
+
+        // 图全空
+        if (start == -1) return 1; 
+
+        // 终点和起点必须成对出现（0个或1个）
+        if (!((tot1 == 1 && tot2 == 1) || (tot1 == 0 && tot2 == 0))) return 0;
+
+        hierholzer(start);
+
+        // 连通性校验：如果走过的点数不等于边数+1，说明有未走到的孤立环
+        if (road.size() != m + 1) return 0;
+
+        return (tot1 == 1 ? 1 : 2); // 1表示通路，2表示回路
+    }
+
+    auto getRoad()
+    {
+        std::reverse(begin(road), end(road));
+        return road;
+    }
+};
+```
+
+### 混合图
+
+混合图即既有有向边又有无向边，之所以不能转化为有向图，是因为在该问题下，无向边被视作可定向的有向边
+
+判断是否有欧拉回路：
+
+首先给每条无向边任意定向，设$deg[x]=dout[x]-din[x]$ 
+
+若存在$deg[x]\&1$或者图不联通 直接无解
+
+否则我们建立源点$S$和汇点$T$ 
+
+对于一个点$x$,如果$deg[x]>0$，那么$S$向$x$流量为$deg[x]/2$的边，否则$x$向$T$连流量为$-deg[x]/2$的边，对于定向的无向边$x->y$，连边$(x,y,1)$，跑最大流算法
+
+如果与$S$和$T$相连的所有边均满流，那么说明有解。
+
+同时该条件等价于$maxFlow=\sum max((din-dout)/2,0)$，即最大流等于所有入度大于出度节点对应的入度减出度除以二的和
+
+构造方案：根据网络流的结果调整无向边的方向。将网络流中加入的定向边流量为$1$的边翻转

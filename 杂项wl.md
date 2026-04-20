@@ -75,3 +75,9 @@ std::ostream &operator<<(std::ostream &os, __int128 val) {
     return os;
 }
 ```
+
+## 随机数rng（）
+
+```cpp
+std::mt19937_64 rng(std::chrono::system_clock::now().time_since_epoch().count());
+```

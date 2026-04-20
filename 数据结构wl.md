@@ -1493,6 +1493,207 @@ public:
 
 \newpage
 
+## 根号算法
+
+### 莫队
+
+莫队是针对形如$Q$次询问，每次给定$L,R$询问区间信息的暴力算法，其思想一定程度上基于分块，通过把序列分块的方式，我们离线所有询问，询问区间$[L,R]$按左端点所在块编号为第一关键字，右端点为第二关键字排序，然后操控指针移动暴力求解。可以证明在这样的操作顺序下，指针移动次数是$n *sqrt(n) $数量级的,所以复杂度也为$O(n*sqrt(n))$ 
+
+#### 普通莫队
+
+```cpp
+struct Query
+{
+    int l, r, id;
+};
+template <class T>
+class RollbackMoTeam
+{
+public:
+    RollbackMoTeam(std::vector<T> &a) : n(a.size() - 1), B(sqrt(2 * n)), val(a)
+    {
+        blockNum = n / B + bool(n % B);
+        res = last = 0;
+    }
+
+    int be(int x)
+    {
+        return (x - 1) / B + 1;
+    }
+    void addQuery(int l, int r, int id)
+    {
+        Q.push_back(Query{l, r, id});
+    }
+    void add(T x) // add和del只要一个
+    {
+    }
+    // void del(T x)
+    // {
+    //}
+
+    void clear()
+    {
+        res = last = 0;
+        // 这里要清空之前的所有信息
+    }
+    T calc(int l, int r)
+    {
+    }
+
+    std::vector<T> work()
+    {
+        std::sort(begin(Q), end(Q), [&](const auto &s, const auto &t)
+                  { return be(s.l) == be(t.l) ? s.r < t.r : s.l < t.l; });
+
+        int idx = 0;
+        for (int i = 1; i <= blockNum; ++i) // 对每个块单独考虑
+        {
+            clear();
+            int R = std::min(B * i, n);
+            int pl = R + 1, pr = R;
+            for (; be(Q[idx].l) == i; ++idx)
+            {
+                auto [l, r, id] = Q[idx];
+                if (r - l + 1 <= B)
+                {
+                    ans[id] = calc(l, r);
+                }
+                else
+                {
+                    while (pr < r)
+                    {
+                        add(val[++pr]); // 右扩展
+                    }
+                    last = res; // 结果存为last
+                    while (pl > l)
+                    {
+                        add(val[--pl]); // 左扩展
+                    }
+                    ans[id] = res; // 结果存入答案
+                    while (l <= R)
+                    {
+                        // 清空信息 add加了什么就清空什么
+                        l++;
+                    }
+                    res = last; // 回滚结果
+                }
+            }
+        }
+        return ans;
+    }
+
+private:
+    int n, B, blockNum;
+    std::vector<T> val;
+    std::vector<T> ans;
+    std::vector<Query> Q;
+    T res, last;
+};
+```
+
+\newpage
+
+#### 回滚莫队
+
+- **右扩展（`pr`）：** 是永久的，直到当前块结束。
+
+- **左扩展（`pl`）：** 是临时的，处理完一个询问就要撤回。
+
+```cpp
+struct Query
+{
+    int l, r, id;
+};
+template <class T>
+class RollbackMoTeam
+{
+public:
+    RollbackMoTeam(std::vector<T> &a) : n(a.size() - 1), B(sqrt(2 * n)), val(a)
+    {
+        blockNum = n / B + bool(n % B);
+        res = last = 0;
+        ans.push_back(0);
+    }
+
+    int be(int x)
+    {
+        return (x - 1) / B + 1;
+    }
+    void addQuery(int l, int r, int id)// 记得给ans分配空间
+    {
+        Q.push_back(Query{l, r, id});
+        ans.push_back(0);
+    }
+    void add(T x) // add和del只要一个,加右边和加左边的操作可能不同，可以分开写
+    {
+
+    }
+    // void del(T x)
+    // {
+    //}
+
+    void clear()
+    {
+        res = last = 0;
+        // 这里要清空之前的所有信息
+    }
+    T calc(int l, int r)// 暴力处理长度小于等于B的区间
+    {
+    }
+
+    std::vector<T> work()
+    {
+        std::sort(begin(Q), end(Q), [&](const auto &s, const auto &t)
+                  { return be(s.l) == be(t.l) ? s.r < t.r : s.l < t.l; });
+
+        int idx = 0;
+        for (int i = 1; i <= blockNum; ++i) // 对每个块单独考虑
+        {
+            clear();
+            int R = std::min(B * i, n);
+            int pl = R + 1, pr = R;
+            for (;idx<size(Q) and be(Q[idx].l) == i; ++idx)
+            {
+                auto [l, r, id] = Q[idx];
+                if (r - l + 1 <= B)
+                {
+                    ans[id] = calc(l, r);
+                }
+                else
+                {
+                    while (pr < r)
+                    {
+                        add(val[++pr]); // 右扩展
+                    }
+                    last = res; // 结果存为last
+                    while (pl > l)
+                    {
+                        add(val[--pl]); // 左扩展
+                    }
+                    ans[id] = res; // 结果存入答案
+                    while (pl <= R)
+                    {
+                        // 清空信息 add加了什么就清空什么
+                        pl++;
+                    }
+                    res = last; // 回滚结果
+                }
+            }
+        }
+        return ans;
+    }
+
+private:
+    int n, B, blockNum;
+    std::vector<T> val;
+    std::vector<T> ans;
+    std::vector<Query> Q;
+    T res, last;
+};
+```
+
+\newpage
+
 ## 堆
 
 对于 std::priority\_queue 不再过多介绍
@@ -1704,7 +1905,7 @@ using MaxBinomialHeap = mergeHeap<T, std::less<T>>;
 
 ### 珂朵莉树
 
-珂朵莉树（ODT）用于维护序列，其核心是一个$Node(l,r,val)$的结构体$set$容器,其中![image](https://cdn.nlark.com/yuque/__latex/8597b8ad64ac82614635dd0459956516.svg)是$mutable$类型使得在$set$中该值可以被修改。那么$set$会自动按照左端点升序排序，每个节点都代表一个区间，该区间内每个位置的值相同，都为对应的$val$。
+珂朵莉树（ODT）用于维护序列，其核心是一个$Node(l,r,val)$的结构体$set$容器,其中$val$是$mutable$类型使得在$set$中该值可以被修改。那么$set$会自动按照左端点升序排序，每个节点都代表一个区间，该区间内每个位置的值相同，都为对应的$val$。
 
 其核心操作为$split$和$assign$,分裂和覆盖，在数据随机的情况下$assign$可以保证区间数量不会很多进而保证复杂度。
 
@@ -1852,9 +2053,9 @@ public:
 
 性质：笛卡尔树每个点的子树下标连续,同时子树的根是子树中值最小/最大的节点。
 
-构建过程（小根堆笛卡尔树）：我们按元素的下标插入，设当前插入的下标为![image](https://cdn.nlark.com/yuque/__latex/2443fbcfeb7e85e1d62b6f5e4f27207e.svg),显然新插入的元素应该在树的最右边，那么我们用一个栈维护最右边的树链，通过不断弹出栈顶来从链底开始向上遍历直到找到一个![image](https://cdn.nlark.com/yuque/__latex/036441a335dd85c838f76d63a3db2363.svg)满足![image](https://cdn.nlark.com/yuque/__latex/8d306d131bed8365b2bf332a93081831.svg)，那么我们把![image](https://cdn.nlark.com/yuque/__latex/2443fbcfeb7e85e1d62b6f5e4f27207e.svg)置为![image](https://cdn.nlark.com/yuque/__latex/036441a335dd85c838f76d63a3db2363.svg)的右儿子，把链底到![image](https://cdn.nlark.com/yuque/__latex/036441a335dd85c838f76d63a3db2363.svg)通过栈弹出的这条链作为![image](https://cdn.nlark.com/yuque/__latex/2443fbcfeb7e85e1d62b6f5e4f27207e.svg)的左儿子。
+构建过程（小根堆笛卡尔树）：我们按元素的下标插入，设当前插入的下标为$i$,显然新插入的元素应该在树的最右边，那么我们用一个栈维护最右边的树链，通过不断弹出栈顶来从链底开始向上遍历直到找到一个$j$满足$val[j]<val[i]$，那么我们把$i$置为$j$的右儿子，把链底到$j$通过栈弹出的这条链作为$i$的左儿子。
 
-显然该过程可以保证笛卡尔树的两个性质，由于每个点只会入栈一次和出栈一次，复杂度为![image](https://cdn.nlark.com/yuque/__latex/e65a67ac353abeeff44c359310d05c02.svg)
+显然该过程可以保证笛卡尔树的两个性质，由于每个点只会入栈一次和出栈一次，复杂度$O(n)$
 
 请注意:只有在权值两两不同时建出的笛卡尔树才唯一
 
