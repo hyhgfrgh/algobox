@@ -923,7 +923,7 @@ std::vector<std::pair<ll, ll>> ceilBlock(ll n)
 ### 平面几何
 
 ```cpp
-typedef long double T;
+jtypedef long double T;
 struct pt{
     T x,y;
     pt(const T& x_ = 0,const T& y_ = 0):x(x_),y(y_){}

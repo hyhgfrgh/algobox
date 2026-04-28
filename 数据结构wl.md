@@ -1,5 +1,7 @@
 \newpage
 
+## 数据结构 uptate: 2026.4.28
+
 ## 前缀和/差分
 
 ```cpp
@@ -108,6 +110,8 @@
 
 ## 树状数组
 
+### 树状数组
+
 ```cpp
 template <typename T>
 struct Fenwick {
@@ -150,6 +154,153 @@ struct Fenwick {
             }
         }
         return x;
+    }
+};
+```
+
++ `select`函数返回$\leq k$的最大索引`x` ,复杂度$log(n)$  
+
+\newpage
+
+### 维护区间加,区间求和
+
+假设我们进行了一次操作：给 $[1, x]$ 区间内的所有数加上 $v$。
+
+对于后续的查询 $[1, y]$，这次更新产生的增量 $\Delta$ 分为两种情况：
+
+- **情况 A：$y \le x$** 此时查询区间完全在更新区间内。增量为：$\Delta = y \cdot v$。
+
+- **情况 B：$y > x$** 此时查询区间覆盖了整个更新区间。增量为：$\Delta = x \cdot v$。
+
+用两个树状数组 $A$ 和 $B$ 分别维护了这两种情况的贡献：
+
+- **树状数组 $B$**：维护的是“单位增量 $v$”，通过后缀和 `B[y+1, n]` 捕获那些 $y \le x$ 的更新。
+
+- **树状数组 $A$**：维护的是“封顶增量 $x \cdot v$”，通过前缀和 `A[1, y]` 捕获那些 $y > x$ 的更新。
+
+```cpp
+    int n,m;cin>>n>>m;
+    vector<int> a(n+1);
+    for(int i = 1;i<=n;i++){
+        cin>>a[i];a[i] += a[i-1];
+    }
+    BIT<int> A(n+10),B(n+10);
+    for(int i = 1;i<=m;i++){
+        int o;cin>>o;
+        if(o == 1){
+            int x,y,k;cin>>x>>y>>k;
+            if(x>y) swap(x,y);
+            A.add(y, y*k);B.add(y, k);
+            A.add(x-1, -(x-1)*k);B.add(x-1, -k);
+        }else{
+            int x,y;cin>>x>>y;
+            if(x>y) swap(x,y);
+            int res1 = A.getsum(y)+(B.getsum(n)-B.getsum(y))*y;
+            int res2 = A.getsum((x-1))+(B.getsum(n)-B.getsum((x-1)))*(x-1);
+            cout<<res1-res2+a[y]-a[x-1]<<"\n";
+        }
+    }
+```
+
+\newpage
+
+### 二维树状数组
+
+```cpp
+template <class T>
+struct BIT
+{
+    int n, m;
+    std::vector<std::vector<T>> a;
+    int lowbit(int x)
+    {
+        return x & (-x);
+    }
+    BIT(int n, int m) : n(n), m(m)
+    {
+        a.assign(n + 1, std::vector<T>(m + 1, 0));
+    }
+    BIT(std::vector<std::vector<T>> &val) : n(val.size() - 1), m(val[1].size() - 1)
+    {
+        a.assign(n + 1, std::vector<int>(m + 1, 0));
+        for (int i = 1; i <= n; ++i)
+        {
+            for (int j = 1; j <= m; ++j)
+            {
+                add(i, j, a[i][j]);
+            }
+        }
+    }
+
+    void add(int x, int y, T val)
+    {
+        for (int i = x; i <= n; i += lowbit(i))
+        {
+            for (int j = y; j <= m; j += lowbit(j))
+            {
+                a[i][j] += val;
+            }
+        }
+    }
+    T query(int x, int y)
+    {
+        T res = 0;
+        for (int i = x; i >= 1; i -= lowbit(i))
+        {
+            for (int j = y; j >= 1; j -= lowbit(j))
+            {
+                res += a[i][j];
+            }
+        }
+        return res;
+    }
+
+    T query(int x1, int y1, int x2, int y2)
+    {
+        return query(x2, y2) - query(x1 - 1, y2) - query(x2, y1 - 1) + query(x1 - 1, y1 - 1);
+    }
+};
+```
+
+\newpage
+
+### 维护矩形区间加
+
+原理和一维的类似,(P4514[上帝造题的七分钟](https://www.luogu.com.cn/problem/P4514)) 
+
+```cpp
+template <class T>
+struct Bit
+{
+    int n, m;
+    BIT<T> A, Ai, Aj, Aij;
+    Bit(int n, int m) : n(n), m(m), A(n, m), Ai(n, m), Aj(n, m), Aij(n, m) // 只用空构造
+    {
+    }
+
+    void add(int x, int y, T val)
+    {
+        A.add(x, y, val);
+        Ai.add(x, y, x * val);
+        Aj.add(x, y, y * val);
+        Aij.add(x, y, x * y * val);
+    }
+    void add(int x1, int y1, int x2, int y2, T val)
+    {
+        add(x1, y1, val);
+        add(x1, y2 + 1, -val);
+        add(x2 + 1, y1, -val);
+        add(x2 + 1, y2 + 1, val);
+    }
+
+    T query(int x, int y)
+    {
+        return ((T)x * y + x + y + 1) * A.query(x, y) - Ai.query(x, y) * (y + 1) - Aj.query(x, y) * (x + 1) + Aij.query(x, y);
+    }
+
+    T query(int x1, int y1, int x2, int y2)
+    {
+        return query(x2, y2) - query(x1 - 1, y2) - query(x2, y1 - 1) + query(x1 - 1, y1 - 1);
     }
 };
 ```
@@ -393,25 +544,19 @@ private:
 
 ```cpp
 template <class T>
-class SegmentTree
-{
+class SegmentTree{
 #define lc u << 1
 #define rc u << 1 | 1
-
 public:
-    struct Node
-    {
+    struct Node{
         int l, r;
         T sum, lmax, rmax, max;
     };
-    SegmentTree(const std::vector<T> &a) : n(a.size()), tr(n * 4)
-    {
+    SegmentTree(const std::vector<T> &a) : n(a.size()), tr(n * 4) {
         n--;
-        std::function<void(int, int, int)> build = [&](int u, int l, int r)
-        {
+        std::function<void(int, int, int)> build = [&](int u, int l, int r){
             tr[u] = {l, r, a[l], a[l], a[l], a[l]};
-            if (l == r)
-            {
+            if (l == r){
                 return;
             }
             int mid = l + r >> 1;
@@ -421,37 +566,28 @@ public:
         };
         build(1, 1, n);
     }
-    T rangeQuery(int x, int y)
-    {
+    T rangeQuery(int x, int y){
         Node ans = rangeQuery(1, 1, n, x, y);
         return ans.max;
     }
-
 private:
     int n;
     std::vector<Node> tr;
-
-    void pushup(Node &u, Node l, Node r)
-    {
+    void pushup(Node &u, Node l, Node r){
         u.sum = l.sum + r.sum;
         u.lmax = std::max(l.lmax, l.sum + r.lmax);
         u.rmax = std::max(r.rmax, r.sum + l.rmax);
         u.max = std::max({l.max, r.max, l.rmax + r.lmax});
     }
-
-    Node rangeQuery(int u, int l, int r, int x, int y)
-    {
-        if (x <= l && y >= r)
-        {
+    Node rangeQuery(int u, int l, int r, int x, int y) {
+        if (x <= l && y >= r){
             return tr[u];
         }
         int mid = l + r >> 1;
-        if (y <= mid)
-        {
+        if (y <= mid){
             return rangeQuery(lc, l, mid, x, y);
         }
-        if (x > mid)
-        {
+        if (x > mid){
             return rangeQuery(rc, mid + 1, r, x, y);
         }
         Node t;
@@ -461,9 +597,11 @@ private:
 };
 ```
 
+\newpage
+
 ### 动态开点
 
-往往我们的序列非常大，但大多数为空，我们并不需要维护整个序列的信息，因此我们可以采用动态开空间的方法，于是有动态开点线段树，具体的说，就是用到哪里的空间就开哪里的空间,我们每需要访问一个节点$u$，假如节点$u$尚未分配空间，我们手动为其开空间即可，因为操作次数往往有限，每次操作我们最多开$logn$的空间，所以空间复杂度是$qlogn$的
+往往我们的序列非常大，但大多数为空，我们并不需要维护整个序列的信息，因此我们可以采用动态开空间的方法，于是有动态开点线段树，具体的说，就是用到哪里的空间就开哪里的空间,我们每需要访问一个节点$u$，假如节点$u$尚未分配空间，我们手动为其开空间即可，因为操作次数往往有限，每次操作我们最多开$logn$的空间，所以空间复杂度是$qlogn$的，也就是传的`capacity` 
 
 ```cpp
 template <class T>
@@ -553,6 +691,386 @@ private:
         {
             res += rangeQuerySum(rc[u], mid + 1, r, x, y);
         }
+        return res;
+    }
+};
+```
+
+\newpage
+
+### 标记永久化
+
+标记永久化是另一种处理懒标记的技术，我们可以把标记永久打在某个区间而不下传给子区间，我们只需要在查询时累加经过节点的信息即可。
+
+### 线段树上二分
+
+线段树上二分，其作用往往是找到$[L,R]$区间内第一个大于等于$D$的位置或值，同理也可以求出右边
+
+我们常规的想法是在线段树外二分并不断询问区间$max$，但这样的复杂度是$(logn)^2$的，并不够优秀
+
+我们完全可以直接在线段树上进行这个二分操作，复杂度降为$log(n)$
+
+```cpp
+template <class T>
+class SegmentTree
+{
+#define lc u << 1
+#define rc u << 1 | 1
+
+public:
+    struct Node
+    {
+        int l, r;
+        T max;
+    };
+    SegmentTree(const std::vector<T> &a) : n(a.size()), tr(4 * n)
+    {
+        n--;
+        std::function<void(int, int, int)> build = [&](int u, int l, int r)
+        {
+            tr[u] = {l, r, a[l]};
+            if (l == r)
+            {
+                return;
+            }
+            int mid = l + r >> 1;
+            build(lc, l, mid);
+            build(rc, mid + 1, r);
+            pushup(u);
+        };
+        build(1, 1, n);
+    }
+    int queryLeftFirstlower(int x, int y, T d)
+    {
+        return queryLeftFirstlower(1, 1, n, x, y, d);
+    }
+
+private:
+    void pushup(int u)
+    {
+        tr[u].max = std::max(tr[lc].max, tr[rc].max);
+    }
+    int n;
+    std::vector<Node> tr;
+    int queryLeftFirstlower(int u, int l, int r, int x, int y, T d) //[x,y]靠左的第一个>=d的下标
+    {
+        if (x == l and y == r)
+        {
+            if (tr[u].max < d)
+            {
+                return 0;
+            }
+            if (l == r)
+            {
+                return l;
+            }
+            int mid = l + r >> 1;
+            if (tr[lc].max >= d)
+            {
+                return queryLeftFirstlower(lc, l, mid, x, mid, d);
+            }
+            else
+            {
+                return queryLeftFirstlower(rc, mid + 1, r, mid + 1, y, d);
+            }
+        }
+        else
+        {
+            int mid = l + r >> 1;
+            if (y <= mid)
+            {
+                return queryLeftFirstlower(lc, l, mid, x, y, d);
+            }
+            else if (x > mid)
+            {
+                return queryLeftFirstlower(rc, mid + 1, r, x, y, d);
+            }
+            else
+            {
+                int pos = queryLeftFirstlower(lc, l, mid, x, mid, d);
+                if (pos == 0)
+                {
+                    return queryLeftFirstlower(rc, mid + 1, r, mid + 1, y, d);
+                }
+                else
+                {
+                    return pos;
+                }
+            }
+        }
+    }
+};
+```
+
+\newpage
+
+### 维护树链
+
+树链剖分得到$dfn$序列和重链信息，可以把链转成$log(n)$个区间，于是我们可以用线段树维护树上链的信息
+
+### 线段树合并
+
+线段树合并往往是动态开点的权值线段树，往往解决的是关于值域方面的询问，比如问子树内出现最多的颜色
+
+换个理解方法，也就是建在树上的主席树
+
+询问往往分两种常见形式
+
+其一是每个节点有信息，询问以某点的子树内的信息总和，这一类是朴素的线段树合并
+
+其二是有区间链加的操作，询问单点信息，这一类我们转化为树上差分，即可转化为第一类。
+
+对于求解方法，我们仍然分两类，新开节点和不新开节点。
+
+对于不新开节点的做法，我们往往离线询问到对应的节点上，然后在递归合并$dfs$时，当$u$节点信息合并完成，我们顺势处理$u$节点的所有询问，但是之后该节点的信息会被覆盖而不能再使用
+
+对于新开节点的做法，我们可以直接$dfs$递归合并所有信息，这样每个节点都可以保留正确的信息，我们可以不用离线询问，但是空间消耗巨大。
+
+往往我们直接采用第一种做法即可
+
+$Solution1$ 
+
+```cpp
+class MergeSegmentTree
+{
+public:
+    // 构造函数
+    // g: 树的邻接表表示
+    // val: 各节点的值
+    // capacity: 线段树节点预分配空间
+    // treeRoot: 树的根节点
+    // min/max: 值域范围（若值域过大需先离散化）
+    MergeSegmentTree(const std::vector<std::vector<int>> &g, std::vector<int> &val, int capacity, int treeRoot, int min, int max)
+        : n(val.size()), g(g), min(min), max(max)
+    {
+        --n; // 调整为1-based索引
+        // 初始化线段树节点数组
+        root.assign(capacity + 1, 0); // 各子树根节点
+        lc.assign(capacity + 1, 0);   // 左子节点指针
+        rc.assign(capacity + 1, 0);   // 右子节点指针
+        sum.assign(capacity + 1, 0);  // 区间和
+
+        // 为每个节点创建叶子节点
+        for (int i = 1; i <= n; ++i)
+        {
+            insert(root[i], min, max, val[i], 1); // 插入节点值
+        }
+        // 后序遍历合并子树线段树
+        dfs(treeRoot, 0);
+    }
+
+    // 查询u子树中值>=val的节点数量
+    int query(int u, int val)
+    {
+        return query(root[u], min, max, val);
+    }
+
+private:
+    int n;                           // 节点总数
+    int tot = 0;                     // 线段树节点计数器
+    int min, max;                    // 值域范围
+    std::vector<int> root;           // 各子树根节点
+    std::vector<int> lc;             // 左子节点指针
+    std::vector<int> rc;             // 右子节点指针
+    std::vector<int> sum;            // 区间和统计
+    std::vector<std::vector<int>> g; // 树的邻接表
+
+    // 更新节点统计值
+    void pushup(int u)
+    {
+        sum[u] = sum[lc[u]] + sum[rc[u]];
+    }
+
+    // 在线段树中插入值
+    // u: 当前节点指针（引用传递）
+    // l/r: 当前区间
+    // pos: 插入位置
+    // val: 插入值
+    void insert(int &u, int l, int r, int pos, int val)
+    {
+        if (!u)
+            u = ++tot; // 动态开点
+        if (l == r)
+        {
+            sum[u] += val; // 叶子节点更新
+            return;
+        }
+        int mid = l + r >> 1;
+        if (pos <= mid)
+            insert(lc[u], l, mid, pos, val); // 递归左子树
+        else
+            insert(rc[u], mid + 1, r, pos, val); // 递归右子树
+        pushup(u);                               // 更新统计值
+    }
+
+    // 合并两棵线段树（返回合并后的根节点）
+    int merge(int x, int y)
+    {
+        if (!x)
+            return y; // x为空则返回y
+        if (!y)
+            return x; // y为空则返回x
+        // 创建新节点合并统计值
+        int u = ++tot;
+        sum[u] = sum[x] + sum[y];
+        // 递归合并左右子树
+        lc[u] = merge(lc[x], lc[y]);
+        rc[u] = merge(rc[x], rc[y]);
+        return u;
+    }
+
+    // 后序遍历合并子树
+    void dfs(int u, int fa)
+    {
+        for (auto v : g[u])
+        {
+            if (v == fa)
+                continue;                      // 跳过父节点
+            dfs(v, u);                         // 先处理子节点
+            root[u] = merge(root[u], root[v]); // 合并子节点线段树
+        }
+    }
+
+    // 查询区间中>=val的值的数量
+    int query(int u, int l, int r, int val)
+    {
+        if (!u)
+            return 0; // 空树返回0
+        if (l >= val)
+            return sum[u]; // 整个区间都>=val
+        int res = 0;
+        int mid = l + r >> 1;
+        if (mid >= val)
+            res += query(lc[u], l, mid, val); // 左子树可能包含
+        res += query(rc[u], mid + 1, r, val); // 右子树可能包含
+        return res;
+    }
+};
+```
+
+\newpage
+$Solution2$
+
+```cpp
+class MergeSegmentTree
+{
+public:
+    // 构造函数
+    // g: 树的邻接表表示
+    // val: 每个节点的值
+    // capacity: 线段树的最大容量
+    // treeRoot: 树的根节点
+    // min: 值域的最小值
+    // max: 值域的最大值（如果值域太大可以传入离散化后的数组）
+    MergeSegmentTree(const std::vector<std::vector<int>> &g, std::vector<int> &val, int capacity, int treeRoot, int min, int max)
+        : n(val.size()), ans(n), g(g), min(min), max(max)
+    {
+        --n; // 调整节点数量（假设节点编号从1开始）
+        // 初始化线段树的各个数组
+        root.assign(capacity + 1, 0); // 每个节点的线段树根
+        lc.assign(capacity + 1, 0);   // 左孩子数组
+        rc.assign(capacity + 1, 0);   // 右孩子数组
+        sum.assign(capacity + 1, 0);  // 线段树节点对应的区间和
+
+        // 为每个节点创建初始线段树
+        for (int i = 1; i <= n; ++i)
+        {
+            insert(root[i], min, max, val[i], 1); // 在值val[i]位置插入1
+        }
+
+        // 从树的根节点开始进行深度优先遍历
+        dfs(treeRoot, 0);
+    }
+
+    // 获取结果数组
+    std::vector<int> getAns()
+    {
+        return ans;
+    }
+
+private:
+    int n;                           // 节点数量
+    int tot = 0;                     // 线段树节点计数器
+    int min, max;                    // 值域范围
+    std::vector<int> root;           // 每个节点的线段树根
+    std::vector<int> lc;             // 线段树左孩子
+    std::vector<int> rc;             // 线段树右孩子
+    std::vector<int> sum;            // 线段树节点和
+    std::vector<std::vector<int>> g; // 树的邻接表
+    std::vector<int> ans;            // 存储每个节点的答案
+
+    // 更新线段树节点的和
+    void pushup(int u)
+    {
+        sum[u] = sum[lc[u]] + sum[rc[u]];
+    }
+
+    // 在线段树中插入值
+    // u: 当前线段树节点
+    // l, r: 当前区间
+    // pos: 要插入的位置
+    // val: 要插入的值
+    void insert(int &u, int l, int r, int pos, int val)
+    {
+        if (!u)
+            u = ++tot; // 动态开点
+        if (l == r)
+        {
+            sum[u] += val; // 叶子节点更新
+            return;
+        }
+        int mid = l + r >> 1;
+        if (pos <= mid)
+        {
+            insert(lc[u], l, mid, pos, val); // 递归左子树
+        }
+        else
+        {
+            insert(rc[u], mid + 1, r, pos, val); // 递归右子树
+        }
+        pushup(u); // 更新当前节点
+    }
+
+    // 合并两棵线段树（覆盖式合并）
+    int merge(int x, int y)
+    {
+        if (!x)
+            return y; // 如果x为空，返回y
+        if (!y)
+            return x;                // 如果y为空，返回x
+        sum[x] += sum[y];            // 合并节点和
+        lc[x] = merge(lc[x], lc[y]); // 递归合并左子树
+        rc[x] = merge(rc[x], rc[y]); // 递归合并右子树
+        return x;
+    }
+
+    // 深度优先遍历树
+    void dfs(int u, int fa)
+    {
+        for (auto v : g[u]) // 遍历所有子节点
+        {
+            if (v == fa)
+                continue;                      // 跳过父节点
+            dfs(v, u);                         // 递归处理子节点
+            root[u] = merge(root[u], root[v]); // 将子节点的线段树合并到当前节点
+        }
+        ans[u] = query(root[u], min, max, val); // 查询当前节点的答案
+    }
+
+    // 查询线段树中>=val的值的数量
+    int query(int u, int l, int r, int val)
+    {
+        if (!u)
+            return 0; // 空树返回0
+        if (l >= val)
+            return sum[u]; // 整个区间都>=val，直接返回和
+        int res = 0;
+        int mid = l + r >> 1;
+        if (mid >= val)
+        {
+            res += query(lc[u], l, mid, val); 
+        }
+        res += query(rc[u], mid + 1, r, val);
         return res;
     }
 };
@@ -729,81 +1247,288 @@ cout<<1e9<<"\n"<<666-1e9<<"\n";
 -9.99999e+08
 ```
 
-静态区间第 k 小
+### 维护值域
 
 ```cpp
-template<class T>
-struct PerSegTree {
-    int tot{}, n{}, inf{};
-    std::vector<int> rs, ls, cnt, root;
-    std::vector<T> sum;
+template <class T>
+class PresidentTree
+{
+private:
+    // 线段树节点结构体
+    struct Node
+    {
+        int val; // 节点值（通常是区间统计值）
+        int l, r;// 左右子节点索引
+        T sum; 
+        // 构造函数，默认左右子节点为0（空）                                             
+        Node(int val = 0) : val{val}, l{0}, r{0}, sum{0} {} 
+    };
 
-    PerSegTree() = default;
-
-    PerSegTree(int _n, int _inf) {//版本数，最大值
-        init(_n, _inf);
+    std::vector<Node> tr;    // 动态节点存储数组
+    const int Start, Last;   // 值域范围 [Start, Last]
+    std::vector<int> root;   // 各版本根节点索引数组
+    int newNode(int val = 0) // 创建新节点
+    {
+        tr.emplace_back(Node(val)); // 在数组末尾添加新节点
+        return tr.size() - 1;       // 返回新节点索引
     }
 
-    void init(int _n, int _inf) {
-        n = _n; inf = _inf; tot = 0;
-        rs.resize(1, 0);
-        ls.resize(1, 0);
-        cnt.resize(1, 0);
-        sum.resize(1, 0);
-        root.resize(n, 0);
-        int estimate = _n * 40; // 预估节点数,留好空位尽量避免整体迁移
-        ls.reserve(estimate);
-        rs.reserve(estimate);
-        cnt.reserve(estimate);
-        sum.reserve(estimate);
+    // 向上更新节点值（基于子节点）
+    void pushup(int u)
+    {
+        tr[u].val = tr[tr[u].l].val + tr[tr[u].r].val; // 当前节点值为左右子节点值之和
+        tr[u].sum = tr[tr[u].l].sum + tr[tr[u].r].sum;
     }
 
-    // 在旧版本v的基础上，给p所在的区间开点并返回节点编号
-    int apply(int v, int l, int r, T p) {
-        // 第一层递归是给root[当前版本]动态开点，赋值为++tot,下面就是给当前操作所产生的长log的链依次开点
-        int u = ++tot; 
-        ls.emplace_back(ls[v]), rs.emplace_back(rs[v]); 
-        cnt.emplace_back(cnt[v]+1), sum.emplace_back(sum[v]+p);
-        if (l == r) return u;
+    // 插入操作（动态开点）
+    void insert(int &u, int l, int r, int x)
+    {
+        if (u == 0) // 如果当前节点不存在
+        {
+            u = newNode(); // 创建新节点
+        }
+        if (l == r) // 到达叶子节点
+        {
+            tr[u].val++; // 增加计数（用于统计出现次数）
+            tr[u].sum += l;
+            return;
+        }
+        int mid = (l + r) >> 1; // 计算中点
+        if (x <= mid)         // 目标在左子树
+        {
+            insert(tr[u].l, l, mid, x); // 递归处理左子树
+        }
+        else // 目标在右子树
+        {
+            insert(tr[u].r, mid + 1, r, x); // 递归处理右子树
+        }
+        pushup(u); // 更新当前节点值
+    }
+
+    // 合并两棵线段树（用于构建版本链）
+    int merge(int u, int v, int l, int r)
+    {
+        if (!u or !v) // 如果任一节点为空
+        {
+            return (u ? u : v); // 返回非空的那个
+        }
+        if (l == r) // 到达叶子节点
+        {
+            tr[u].val += tr[v].val; // 合并统计值
+            tr[u].sum += tr[v].sum;
+            return u;
+        }
+        int mid = (l + r) >> 1;                          // 计算中点
+        tr[u].l = merge(tr[u].l, tr[v].l, l, mid);     // 递归合并左子树
+        tr[u].r = merge(tr[u].r, tr[v].r, mid + 1, r); // 递归合并右子树
+        pushup(u);                                     // 更新当前节点值
+        return u;                                      // 返回合并后的树根
+    }
+
+    // 查询区间 [x,y] 内的元素个数（版本u到v之间的变化）
+    int getRange(int u, int v, int l, int r, int x, int y)
+    {
+        if (y < l or x > r) // 查询区间与当前区间无交集
+        {
+            return 0;
+        }
+        if (x <= l and y >= r) // 当前区间完全包含在查询区间内
+        {
+            return tr[v].val - tr[u].val; // 返回版本间的差值
+        }
+        int mid = (l + r) >> 1; // 计算中点
+        int res = 0;
+        if (x <= mid) // 查询左子树
+        {
+            res += getRange(tr[u].l, tr[v].l, l, mid, x, y);
+        }
+        if (y > mid) // 查询右子树
+        {
+            res += getRange(tr[u].r, tr[v].r, mid + 1, r, x, y);
+        }
+        return res;
+    }
+
+    // 查询第k小的元素（版本u到v之间）
+    int getKth(int u, int v, int l, int r, int k)
+    {
+        if (l == r) // 到达叶子节点
+        {
+            return l; // 返回该值
+        }
+        int mid = (l + r) >> 1;                      // 计算中点
+        int L = tr[tr[v].l].val - tr[tr[u].l].val; // 左子树元素个数
+        if (L >= k)                                // 第k小在左子树
+        {
+            return getKth(tr[u].l, tr[v].l, l, mid, k);
+        }
+        else // 第k小在右子树
+        {
+            return getKth(tr[u].r, tr[v].r, mid + 1, r, k - L); // 注意k要减去左子树元素数
+        }
+    }
+    // 前k大的数之和
+    T getKthSum(int u, int v, int l, int r, int k) 
+    {
+        if (!k)
+        {
+            return 0;
+        }
+        if (l == r)
+        {
+            return (T)l * k;
+        }
+        int cnt = tr[tr[v].r].val - tr[tr[u].r].val;
         int mid = (l + r) >> 1;
-        if (p <= mid) ls[u] = apply(ls[v], l, mid, p);
-        else rs[u] = apply(rs[v], mid + 1, r, p);
-        return u;
+        if (cnt >= k)
+        {
+            return getKthSum(tr[u].r, tr[v].r, mid + 1, r, k);
+        }
+        else
+        {
+            return tr[tr[v].r].sum - tr[tr[u].r].sum + getKthSum(tr[u].l, tr[v].l, l, mid, k - cnt);
+        }
     }
 
-    void apply(int v1, int v2, T p) {
-        root[v1] = apply(root[v2], 1, inf, p);
-    }
-    // 二分查找
-    // u是当前版本所操作的区间节点编号，v是旧版本对应区间的节点编号
-    int query(int u, int v, int l, int r, int k) {
-        if (l == r) return l;
-        int s = cnt[ls[u]] - cnt[ls[v]];
-        int mid = (l + r) >> 1;
-        if (s >= k) return query(ls[u], ls[v], l, mid, k);
-        else return query(rs[u], rs[v], mid + 1, r, k - s);
+public:
+    // 构造函数：基于数组a初始化，值域范围[mi, ma]
+    PresidentTree(const std::vector<int> &a, int mi, int ma)
+        : root(a.size()), Start(mi), Last(ma), tr(1) // 初始化
+    {
+        // 预分配空间（优化性能）
+        tr.reserve(a.size() * std::__lg(2 * a.size()));
+        root[0] = newNode(); // 创建初始版本（空树）
+
+        // 构建各版本
+        for (int i = 1; i <= a.size() - 1; ++i)
+        {
+            // 空间不足时扩容
+            if (tr.capacity() <= tr.size() + 64)
+            {
+                tr.reserve(std::max(2 * tr.capacity(), tr.capacity() + 64));
+            }
+            insert(root[i], Start, Last, a[i]);                 // 插入当前元素
+            root[i] = merge(root[i], root[i - 1], Start, Last); // 合并到前一版本
+        }
     }
 
-    int query(int l, int r, int k) {
-        return query(root[r], root[l], 1, inf, k);
+    // 查询区间 [u,v] 中值在 [l,r] 范围内的元素个数
+    int getRange(int u, int v, int l, int r)
+    {
+        return getRange(root[u - 1], root[v], Start, Last, l, r);
+    }
+
+    // 查询区间 [u,v] 中第k小的元素
+    int getKth(int u, int v, int k)
+    {
+        return getKth(root[u - 1], root[v], Start, Last, k);
+    }
+    T getKthSum(int u, int v, int k)
+    {
+        return getKthSum(root[u - 1], root[v], Start, Last, k);
     }
 };
-
-void solve(){
-    int B = 1e9;
-    int n,q;cin>>n>>q;
-    vector<int> a(n+1);
-    PerSegTree<int> tr(n+1,2*B+10);
-    for(int i = 1;i<=n;i++){
-        cin>>a[i];
-        tr.apply(i,i-1,a[i]+B);
-    }
-    while(q--){
-        int l,r,k;cin>>l>>r>>k;
-        cout<<tr.query(l-1,r,k)-B<<"\n";
-    }
-}
 ```
+
+### 维护历史版本
+
+在维护历史版本的主席树中，我们可以支持在新开版本时实现区间加，使用标记永久化的技巧即可。
+
+```cpp
+template <class T>
+class PresidentTree
+{
+public:
+    // 构造函数：使用给定数组a初始化主席树，capacity指定预分配空间大小
+    PresidentTree(const std::vector<int> &a, int capacity)
+        : n(a.size()),      // 数组长度
+          root(n),          // 各版本根节点数组
+          lc(capacity + 1), // 左子节点数组（+1防止越界）
+          rc(capacity + 1), // 右子节点数组
+          sum(capacity + 1) // 节点和数组
+    {
+        // 递归构建初始版本线段树的lambda函数
+        std::function<void(int &, int, int)> build = [&](int &u, int l, int r)
+        {
+            u = ++idx;  // 分配新节点，idx从1开始
+            if (l == r) // 叶子节点
+            {
+                sum[u] = a[l]; // 存储数组值
+                return;
+            }
+            int mid = l + r >> 1;     // 计算中点
+            build(lc[u], l, mid);     // 递归构建左子树
+            build(rc[u], mid + 1, r); // 递归构建右子树
+            pushup(u);                // 合并子节点信息
+        };
+        build(root[0], 1, n - 1); // 构建初始版本（版本0），基于数组索引
+    }
+
+private:
+    int idx = 0;           // 节点计数器，从1开始分配
+    int n;                 // 数组长度
+    std::vector<int> root; // 各版本根节点数组
+    std::vector<int> lc;   // 左子节点数组
+    std::vector<int> rc;   // 右子节点数组
+    std::vector<T> sum;    // 节点和数组（使用long long类型）
+
+    // 向上合并子节点信息
+    void pushup(int u)
+    {
+        sum[u] = sum[lc[u]] + sum[rc[u]]; // 当前节点和为左右子节点和之和
+    }
+
+    // 插入新版本：基于版本v创建新版本u，在pos位置更新值为x
+    void insertNewVersion(int &u, int v, int l, int r, int pos, int x)
+    {
+        u = ++idx; // 分配新节点（关键：必须创建新节点以实现可持久化）
+
+        // 复制旧版本v的信息
+        lc[u] = lc[v];
+        rc[u] = rc[v];
+        sum[u] = sum[v];
+
+        if (l == r) // 到达目标位置
+        {
+            sum[u] = x; // 更新值
+            return;
+        }
+
+        int mid = l + r >> 1; // 计算中点
+        if (pos <= mid)       // 目标在左子树
+        {
+            // 递归处理左子树，创建新路径
+            insertNewVersion(lc[u], lc[v], l, mid, pos, x);
+        }
+        else // 目标在右子树
+        {
+            // 递归处理右子树，创建新路径
+            insertNewVersion(rc[u], rc[v], mid + 1, r, pos, x);
+        }
+        pushup(u); // 更新当前节点信息
+    }
+};
+```
+
+\newpage
+
+### 维护树上信息
+
+我们在线段树合并部分其实已经涉及此问题，我们认为线段树合并就是一种树上主席树类似的结构。
+
+但是线段树合并长于维护子树信息，在维护链上问题时几乎束手无策,因此我们需要想新的办法
+
+我们引出树上主席树，其本质仍然是主席树，只不过把区间变成了树，树实际上可以转化为不同的序列，我们按特定的顺序建主席树的方法，称为树上主席树,分两种，分别为$DFS$序和$BFS$序
+
+#### DFS序
+
+  $DFS$ 序建立的主席树可以解决树链上的值域问题，我们按$dfn$序遍历的顺序来建树，每次基于的版本来自其父节点的版本，那么怎么转化为树链呢？我们采用树上差分的思想即可。
+
+#### BFS序
+
+按$dep$排序,也就是我们以$dep$为依据加点，每个节点基于的版本是上一个$dep$相同的节点，如果没有则基于$dep-1$新开版本即可。
+
+主要面向的问题是，对节点$u$，询问其子树内深度小于等于$d$的信息，注意到虽然完整子树的$dfn$序连续，但是只截取部分深度是不连续的。但按我们这样建立的主席树，相同深度的节点将是同一个版本，也就可以解决这一类问题。但是其他子树内也存在深度小于等于$d$的节点，怎么办呢？注意到主席树实际上可以限制两维信息，分别是版本区间和内层值域区间，我们只需要限制值域为 $[dfn[u],dfn[u]+siz[u]-1]$ 即可
 
 \newpage
 
@@ -2046,6 +2771,8 @@ public:
     }
 };
 ```
+
+\newpage
 
 ### 笛卡尔树
 
