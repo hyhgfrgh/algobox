@@ -923,8 +923,9 @@ std::vector<std::pair<ll, ll>> ceilBlock(ll n)
 ### 平面几何
 
 ```cpp
-jtypedef long double T;
-struct pt{
+typedef long double T;
+struct pt // 点/向量
+{
     T x,y;
     pt(const T& x_ = 0,const T& y_ = 0):x(x_),y(y_){}
     pt operator+(pt p){return {x+p.x,y+p.y};}
@@ -934,44 +935,56 @@ struct pt{
     bool operator==(const pt& b){return x == b.x && y == b.y;}
     bool operator!=(const pt& b){return !(*this == b);}
     bool operator<(const pt& b) const {
-        if (abs(x - b.x) > 1e-9) return x < b.x;
+        if (std::abs(x - b.x) > 1e-9) return x < b.x;
         return y < b.y - 1e-9;
     }
 };
-T sq(pt p){return p.x*p.x+p.y*p.y;}
-T absv(pt p){return sqrtl(sq(p));}
-pt scale(pt c,T factor,pt p){
+T sq(pt p)// 向量模的平方
+{return p.x*p.x+p.y*p.y;}
+T absv(pt p) // 返回向量的模
+{return sqrtl(sq(p));}
+pt scale(pt c,T factor,pt p)// 以 c 为中心将 p 缩放 factor 倍
+{
     return c+(p-c)*factor;
 }
-pt rot(const pt& p,T a){
+pt rot(const pt& p,T a) // 将向量p逆时针旋转角度a(弧度制)
+{
     return {p.x*cosl(a)-p.y*sinl(a),p.x*sinl(a)+p.y*cosl(a)};
 }
-pt perp(const pt& p){
+pt perp(const pt& p) // 返回p的垂线向量(逆时针旋转90度)
+{
     return {-p.y,p.x};
 }
 // 以下(大写字母表示向量)
-// 点积: A*B = |a|*|b|*cos(angle)
+// 点积: V*W = |v|*|w|*cos(angle)
 T dot(pt v,pt w){ return v.x*w.x+v.y*w.y;}
 
-bool isPerp(const pt& v,const pt& w){return dot(v,w) == 0;}
+bool isPerp(const pt& v,const pt& w) // 判断两个向量是否垂直
+{return dot(v,w) == 0;}
 
 // 叉积: A*B = |a|*|b|*sin(angle)
 // V到W的夹角,cross(v, w) > 0 ==> sin(θ) > 0 ==> w 在 v 的逆时针方向
 T cross(pt v,pt w){return v.x*w.y-v.y*w.x;}
 
-T angle(pt v,pt w){ // tan = sin/cos
-    return abs(atan2l(cross(v,w), dot(v,w)));
+T angle(pt v,pt w) // 计算两个向量的夹角
+{ // tan = sin/cos
+    return std::abs(atan2l(cross(v,w), dot(v,w)));
 }
-T orient(pt a,pt b,pt c){ return cross(b-a, c-a);}
-bool inAngle(pt a,pt b,pt c,pt p){
-    assert(orient(a, b, c) != 0);
-    if(orient(a, b, c)<0) swap(b,c);
+T orient(pt a,pt b,pt c) // 判断点c相对与线段ab的位置
+// 正值表示在左侧(逆时针)，负值表示在右侧顺时针，0表示三点共线
+{ return cross(b-a, c-a);}
+bool inAngle(pt a,pt b,pt c,pt p) // 判断点p是否在角BAC范围内
+{
+    // assert(orient(a, b, c) != 0);
+    if(orient(a, b, c)<0) std::swap(b,c);
     return orient(a, b, p)>=0 && orient(a, c, p)<=0;
 }
-bool half(pt p){
+bool half(pt p)// 极角排序，用于区分上半平面和下半平面
+{
     return p.y>0 || (p.y == 0 && p.x>0);
 }
-bool cmpPolar(pt x,pt y){
+bool cmpPolar(pt x,pt y) // 极角排序
+{
     int tx = half(x),ty = half(y);
     if(tx!=ty) return tx<ty;
     else return x.y*y.x<y.y*x.x;
@@ -984,11 +997,16 @@ struct line{
     line(T a,T b,T c):v({b,-a}),c(c){}
     line(pt p,pt q):v(q-p),c(cross(v, p)){}
 };
-T side(line ln,pt p) {return cross(ln.v,p)-ln.c;} // a*x+b*y-c    正负是方向向量v转到p的旋转方向
-T dist(line ln,pt p) {return abs(side(ln,p))/absv(ln.v);}
-T sqDist(line ln,pt p) {return side(ln,p)*side(ln,p)/sq(ln.v);}
-line perpThrough(line ln,pt p){ return {p,p+perp(ln.v)};}
-bool inter(line l1,line l2,pt &out){ // 求两直线交点
+T side(line ln,pt p)// 判断p在直线ln的哪一侧 
+{return cross(ln.v,p)-ln.c;} // a*x+b*y-c    正负是方向向量v转到p的旋转方向
+T dist(line ln,pt p) // p到直线ln的垂直距离
+{return std::abs(side(ln,p))/absv(ln.v);}
+T sqDist(line ln,pt p) // 点到直线距离的平方
+{return side(ln,p)*side(ln,p)/sq(ln.v);}
+line perpThrough(line ln,pt p)// 返回过点p垂直于ln的直线
+{ return {p,p+perp(ln.v)};}
+bool inter(line l1,line l2,pt &out)// 求两直线交点，返回false表示两直线平行
+{
     T d = cross(l1.v, l2.v);
     if(d == 0) return false;
     out = (l2.v*l1.c-l1.v*l2.c)/d;
@@ -998,23 +1016,25 @@ bool inter(line l1,line l2,pt &out){ // 求两直线交点
 bool cmpProj(line ln,pt p,pt q){ // 根据点在直线上的投影排序
     return dot(ln.v,p) < dot(ln.v,q);
 }
-line translate(line ln,pt t){ // 平移
+line translate(line ln,pt t){ // 把直线平移向量 t
     // a(x-t.x)*b(y-t.y)=c   a*t.x + b*t.y = cross(ln.v,t)
     return {ln.v,ln.c+cross(ln.v,t)};
 }
-pt proj(line ln,pt p){ // 正交投影 
+pt proj(line ln,pt p){ // 点p在直线ln上的正交投影 
     return p-perp(ln.v)*side(ln,p)/sq(ln.v); // perp(ln.v)*side(ln,p)/sq(ln.v)是垂点到p的向量z
 }
-pt refl(line ln,pt p){ // 反射投影
+pt refl(line ln,pt p){ // p关于直线ln的反射投影(对称点)
     return p-perp(ln.v)*2*side(ln, p)/sq(ln.v);
 }
 bool inDisk(pt a,pt b,pt p){ // 判断点p是否在直径为ab的圆内
-    return dot(a-p, b-p)<=0;
+    return dot(a-p, b-p)<=0; // 原理:夹角<=90,sin(angle)<=0
 }
 bool onSegment(pt a,pt b,pt p){ // 判断点p是否在线段ab
     return orient(a, b, p) == 0 && inDisk(a, b, p);
 }
-bool properInter(pt a,pt b,pt c,pt d,pt& out){
+bool properInter(pt a,pt b,pt c,pt d,pt& out)
+// 判断线段ab和cd是否在非端点处相交(严格相交判定)
+{
     T oa = orient(c, d, a),ob = orient(c, d, b),
         oc = orient(a, b, c),od = orient(a, b, d);
     if(oa*ob<0 && oc*od<0){
@@ -1023,45 +1043,57 @@ bool properInter(pt a,pt b,pt c,pt d,pt& out){
     }
     return false;
 }
-set<pt> inters(pt a,pt b,pt c,pt d){
+std::set<pt> inters(pt a,pt b,pt c,pt d)
+// 通用线段相交，返回所有交点（0(不相交)/1(相交),如果线段重合返回重合的两个端点)
+{
     pt out;
     if(properInter(a, b, c, d, out)) return {out};
-    set<pt> res;
+    std::set<pt> res;
     if(onSegment(c, d, a)) res.insert(a);
     if(onSegment(c, d, b)) res.insert(b);
     if(onSegment(a, b, c)) res.insert(c);
     if(onSegment(a, b, d)) res.insert(d);
     return res; // res.size() == 1表示两个线段的交点，res.size() == 2表示相交区域是线段，其中存的是这个线段的两个端点
 }
-T segPoint(pt a,pt b,pt p){
+T segPoint(pt a,pt b,pt p)//点p到线段ab的距离，如果垂足不在内部，取到端点的距离
+{
     if(a != b){
         line l(a,b);
         if(cmpProj(l,a,p) && cmpProj(l, p, b))
             return dist(l, p);
-        return min(absv(p-a),absv(p-b));
+        return std::min(absv(p-a),absv(p-b));
     }
     return absv(p-a);
 }
-T segSeg(pt a,pt b,pt c,pt d){
+T segSeg(pt a,pt b,pt c,pt d)// 线段到线段的距离
+// 相交为0,否则到为四个端点到对方线段距离的最小值
+{
     pt dummy;
     if(properInter(a, b, c, d, dummy)) return 0;
-    return min({segPoint(a, b, c),segPoint(a, b, d),
+    return std::min({segPoint(a, b, c),segPoint(a, b, d),
         segPoint(c, d, a),segPoint(c, d, b)});
 }
-T areaPolygon(vector<pt> p){ // 多边形的点需按顺序排列
+T areaPolygon(std::vector<pt> p)
+// 多边形的点需按顺序排列,返回多边形的面积
+{ 
     T area = 0.0;
     for(int i = 0,n = p.size();i<n;i++){
         area += cross(p[i], p[(i+1)%n]);
     }
-    return abs(area)/2.0;
+    return std::abs(area)/2.0;
 }
-bool above(pt a,pt p){
+bool above(pt a,pt p)// 判断点p是否在点a的上方
+{
     return p.y >= a.y;
 }
-bool crossesRay(pt a,pt p,pt q){
+bool crossesRay(pt a,pt p,pt q)
+// 判断a向右发出的射线(不包含点)是否穿过线段pq
+{
     return (above(a, q)-above(a, p))*orient(a, p, q) > 0;
 }
-bool inPolygon(vector<pt> p,pt a,bool strict = true){
+bool inPolygon(std::vector<pt> p,pt a,bool strict = true)
+// 判断点是否在多边形内部
+{
     int numCrossings = 0;
     for(int i = 0,n = p.size();i<n;i++){
         if(onSegment(p[i], p[(i+1)%n], a)) return !strict;

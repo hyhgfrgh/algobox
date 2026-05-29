@@ -804,6 +804,281 @@ private:
 
 \newpage
 
+### 李超线段树
+
+李超线段树是一种用来维护平面上线段关系的数据结构，其在一类斜率优化$DP$中有重要作用。
+
+更具体的说，对于插入李超线段树的所有线段$y=kx+b,x\in [L,R]$，对于任意的$x$我都可以求出对应的$y_{max},y_{min}$。
+
+李超线段树分两种，其限制条件不同，操作方法不同，时间复杂度也不同
+
+对于$nlognlogn$的李超线段树，我可以指定每段线段不同的的起点和终点，对于$nlogn$的李超线段树，每个线段的起点和终点的横坐标相同。
+
+特别需要注意的是，对于$id$为$0$的情况我们需要返回$inf$
+
+而且在修改最大最小时都要改变$change$和$query$函数
+
+```cpp
+// 李超线段树（Lichao Tree）实现，用于维护多条线段并在给定点查询最大值
+class LichaoTree
+{
+    using ld = long double;         // 使用 long double 提高浮点数精度
+    using pdi = std::pair<ld, int>; // 存储线段值和线段索引的 pair
+
+    // 宏定义左右子节点（线段树标准写法）
+#define lc u << 1     // 左子节点索引
+#define rc u << 1 | 1 // 右子节点索引
+
+    const ld eps = 1e-9; // 浮点数比较的误差范围
+    const int inf = 1e9; // 表示无穷大的值
+
+public:
+    // 线段结构体，k是斜率，b是截距
+    struct Line
+    {
+        ld k, b;
+    };
+
+    // 构造函数
+    // n: 线段最大数量
+    // min: 坐标最小值
+    // max: 坐标最大值
+    LichaoTree(int n, int min, int max)
+        : tr(max * 4 + 1, 0), // 线段树节点数组，初始化为0（表示无线段）
+          p(n + 1),           // 线段存储数组
+          min(min),           // 最小x坐标
+          max(max)            // 最大x坐标
+    {
+        // n是线段条数 min是最小X坐标,max是最大x坐标
+    }
+
+    // 插入一条线段 y = kx + b，作用区间为[l, r]
+    void insertLine(ld k, ld b, int l, int r)
+    {
+        p[++idx] = {k, b};              // 存储线段
+        change(1, min, max, l, r, idx); // 更新线段树
+    }
+
+    // 查询x位置的最大值及其对应的线段索引
+    pdi queryMax(int x)
+    {
+        return query(1, min, max, x);
+    }
+
+private:
+    std::vector<Line> p; // 存储所有线段
+    std::vector<int> tr; // 线段树节点，存储当前区间最优线段索引
+    int idx = 0;         // 当前线段数量
+    int min, max;        // x坐标范围
+
+    // 获取线段lineId在x位置的值
+    ld getval(int lineId, int x)
+    {
+        if (!lineId)
+        {
+            return -inf; // 无效线段返回-∞（因为这里是求最大值）
+        }
+        auto [k, b] = p[lineId]; // 解构线段
+        return k * x + b;        // 计算y值
+    }
+
+    // 浮点数比较函数
+    // 返回值：1(a>b), -1(a<b), 0(a==b)
+    int cmp(ld a, ld b)
+    {
+        if (a - b > eps)
+            return 1; // a > b
+        if (b - a > eps)
+            return -1; // a < b
+        return 0;      // a == b
+    }
+
+    // 递归更新线段树
+    // u: 当前节点
+    // [l,r]: 当前节点表示的区间
+    // [x,y]: 要更新的区间
+    // id: 新线段的索引
+    void change(int u, int l, int r, int x, int y, int id)
+    {
+        int mid = l + r >> 1; // 区间中点
+
+        // 如果当前区间完全包含在更新区间内
+        if (x <= l and y >= r)
+        {
+            // 比较中点处的值
+            int cm = cmp(getval(id, mid), getval(tr[u], mid));
+            // 如果新线段更优，或者值相同但索引更小（保证稳定性），则交换
+            if (cm == 1 || (!cm and id < tr[u]))
+            {
+                std::swap(id, tr[u]);
+            }
+
+            // 检查左端点是否需要递归更新左子树
+            int cl = cmp(getval(id, l), getval(tr[u], l));
+            if (cl == 1 || (!cl and id < tr[u]))
+            {
+                change(lc, l, mid, x, y, id);
+            }
+
+            // 检查右端点是否需要递归更新右子树
+            int cr = cmp(getval(id, r), getval(tr[u], r));
+            if (cr == 1 || (!cr and id < tr[u]))
+            {
+                change(rc, mid + 1, r, x, y, id);
+            }
+            return;
+        }
+
+        // 部分覆盖，递归处理子区间
+        if (x <= mid)
+            change(lc, l, mid, x, y, id);
+        if (y > mid)
+            change(rc, mid + 1, r, x, y, id);
+    }
+
+    // 比较两个结果，返回较大的那个
+    // 如果值相同，返回索引较小的（保证稳定性）
+    pdi pmax(pdi a, pdi b)
+    {
+        if (cmp(a.first, b.first) == 1)
+            return a; // a > b
+        else if (cmp(a.first, b.first) == -1)
+            return b; // a < b
+        else
+            return a.second < b.second ? a : b; // 值相同时取索引小的
+    }
+
+    // 查询x位置的最大值
+    pdi query(int u, int l, int r, int x)
+    {
+        // 叶节点直接返回
+        if (l == r)
+        {
+            return {getval(tr[u], x), tr[u]};
+        }
+
+        int mid = l + r >> 1;
+        pdi now = {getval(tr[u], x), tr[u]}; // 当前节点的值
+
+        // 递归查询子区间
+        if (x <= mid)
+        {
+            return pmax(now, query(lc, l, mid, x));
+        }
+        else
+        {
+            return pmax(now, query(rc, mid + 1, r, x));
+        }
+    }
+}
+```
+
+```cpp
+// 李超线段树类，用于维护多条线段并在给定点查询最大值
+
+template <class T>
+class LichaoTree
+{
+    const T inf = std::numeric_limits<T>::max() / 2;
+#define lc u << 1     // 左子节点宏定义
+#define rc u << 1 | 1 // 右子节点宏定义
+
+    // 线段结构体，表示y = kx + b
+    struct Line
+    {
+        T k, b; // 斜率k和截距b
+    };
+
+    // 构造函数
+    // n: 预处理的线段数量
+    // min: 值域最小值
+    // max: 值域最大值
+    LichaoTree(int n, int min, int max)
+        : tr(max * 4 + 1), // 线段树数组大小（4倍空间）
+          p(n + 1),        // 线段存储数组
+          min(min),        // 值域下界
+          max(max)         // 值域上界
+    {
+    }
+
+    // 插入一条新线段 y = kx + b
+    void insertLine(T k, T b)
+    {
+        p[++idx] = {k, b};        // 存储线段参数
+        change(1, min, max, idx); // 从根节点开始更新线段树
+    }
+
+    // 在x处查询最大值
+    T queryMax(int x)
+    {
+        return queryMax(1, min, max, x); // 从根节点开始查询
+    }
+
+private:
+    int idx = 0;         // 线段计数器
+    int min, max;        // 值域范围
+    std::vector<int> tr; // 线段树节点，存储优势线段的索引
+    std::vector<Line> p; // 存储所有线段
+
+    // 计算线段id在x处的值
+    T getval(int id, int x)
+    {
+        if (!id)
+            return -inf;     // 无效线段返回负无穷
+        auto [k, b] = p[id]; // 解构线段参数
+        return k * x + b;    // 计算y值
+    }
+
+    // 更新线段树，插入新线段
+    void change(int u, int l, int r, int id)
+    {
+        int mid = l + r >> 1; // 计算区间中点
+
+        // 如果新线段在中点处更优，交换当前线段
+        if (getval(id, mid) > getval(tr[u], mid))
+        {
+            std::swap(id, tr[u]);
+        }
+
+        // 如果新线段在左端点更优，递归左子树
+        if (getval(id, l) > getval(tr[u], l))
+        {
+            change(lc, l, mid, id);
+        }
+
+        // 如果新线段在右端点更优，递归右子树
+        if (getval(id, r) > getval(tr[u], r))
+        {
+            change(rc, mid + 1, r, id);
+        }
+    }
+
+    // 查询x处的最大值
+    T queryMax(int u, int l, int r, int x)
+    {
+        if (l == r) // 到达叶子节点
+        {
+            return getval(tr[u], x);
+        }
+
+        int mid = l + r >> 1;
+        T now = getval(tr[u], x); // 当前节点的线段在x处的值
+
+        // 根据x的位置决定查询方向
+        if (x <= mid)
+        {
+            return std::max(now, queryMax(lc, l, mid, x));
+        }
+        else
+        {
+            return std::max(now, queryMax(rc, mid + 1, r, x));
+        }
+    }
+};
+```
+
+\newpage
+
 ### 维护树链
 
 树链剖分得到$dfn$序列和重链信息，可以把链转成$log(n)$个区间，于是我们可以用线段树维护树上链的信息

@@ -1,3 +1,5 @@
+\newpage
+
 ## 图论 uptate: 2026.4.28
 
 ## 一些概念
@@ -2447,7 +2449,7 @@ public:
     std::vector<int> bel; // 节点所属的SCC编号
 
     // SCC相关数据
-    std::vector<std::vector<int>> p; // 每个SCC包含的节点列表
+    std::vector<std::vector<int>> p; // 每个SCC包含的节点列表 1-base
     std::vector<std::vector<int>> g; // 缩点后的DAG图（邻接表）
     std::vector<int> din;            // 缩点后各节点的入度
     std::vector<int> siz;            // 各SCC的大小（节点数）
