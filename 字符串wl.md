@@ -47,7 +47,7 @@ struct StringHash
 
 ### 无序字符串哈希
 
-我们考虑哈希函数为$f(n)=\sum_{i=1}^n h[s[i]]$，其中$h[x]$是一个随机的函数，只要保证$x$相同时 $h[x]$ 相同即可
+我们考虑哈希j函数为$f(n)=\sum_{i=1}^n h[s[i]]$，其中$h[x]$是一个随机的函数，只要保证$x$相同时 $h[x]$ 相同即可
 
 ```cpp
 struct StringHash
@@ -199,6 +199,9 @@ int findMinimalCycle(std::string s)
 std::vector<int> kmp(std::string &s) {
     int n = s.size();
     std::vector<int> next(n + 1);
+    // j 表示将要匹配的位置，
+    // next[j]表示回溯后将要匹配的位置
+    // 已经匹配过的事j-1的长度
     for (int i = 1, j = 0; i < n; i++) {
         while (j && s[i] != s[j]) j = next[j];
         if (s[i] == s[j]) j++;
@@ -473,7 +476,7 @@ AC自动机即在$trie$树的基础上补成一个$trie$有向图，并求出$fa
 
 我们考虑一个串在$trie$图上走的意义，首先建图方式保证了我们走图的最优性，什么叫最优性呢，也就是说在走不下去时会找到最长的后缀继续走下去。我们每走到一个点，该点在$fail$树上的每个祖先都会出现一次，由于最优性保证了不重不漏。因此多模式匹配的做法就是，先在$trie$图上跑完整个串，对于每个到达的节点都标记一次贡献。然后我们利用$dfs$或者$toposort$的方式自下而上合并，把所有贡献合并给其祖先即可，此时每个节点的权值就代表了它出现的次数。
 
-传入的$vectorstd::string \&s $为 $0-base$ 
+传入的 $vectorstd::string \&s$ 为 $0-base$ 
 
 - `Z`: 字符集大小（例如小写字母就是 `26`）。
 
