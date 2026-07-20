@@ -1468,7 +1468,6 @@ struct RedBlackTree
 不考虑顺序的情况下完全可以代替map和umap,只是占的空间可能有一点大
 
 ```cpp
-#include<bits/stdc++.h>
 #include<bits/extc++.h> 
 // 包含pbds库（部分编译器可能需要用#include <ext/pb_ds/hash_policy.hpp>）
 // #include <ext/pb_ds/assoc_container.hpp>

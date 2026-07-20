@@ -22,7 +22,7 @@ struct StringHash
     std::vector<int> H;
     int Base, P;
     StringHash(const std::string &s, int Base, int P) 
-        : n(s.size()), Hash(n), H(n), Base(Base), P(P) // 默认字符串加了前导字符
+        : n(s.size()), Hash(n), H(n), Base(Base), P(P) // 默认字符串加了前导字符
     {
         Hash.assign(n, 0);
         H.assign(n, 0);

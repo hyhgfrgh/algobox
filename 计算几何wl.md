@@ -90,7 +90,7 @@ struct line{
     pt v;T c; // v 为直线的方向向量
     line(pt v_,T c_):v(v_),c(c_){}
     // 直线方程a*x + b*y + c = 0,方向向量(b,-a)
-    line(T a,T b,T c):v({b,-a}),c(c){}
+    line(T a,T b,T c):v({b,-a}),c(-c){}
     line(pt p,pt q):v(q-p),c(cross(v, p)){}
 };
 T side(line ln,pt p)// 判断p在直线ln的哪一侧 
