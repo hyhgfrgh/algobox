@@ -1,6 +1,6 @@
 \newpage
 
-## 数据结构 uptate: 2026.4.28
+## 数据结构 uptate: 2026.6.08
 
 ## 前缀和/差分
 
@@ -158,7 +158,7 @@ struct Fenwick {
 };
 ```
 
-+ `select`函数返回$\leq k$的最大索引`x` ,复杂度$log(n)$  
++ `select`函数返回前缀和$\leq k$的最大索引`x` ,复杂度$log(n)$  
 
 \newpage
 
@@ -1962,7 +1962,7 @@ void solve(){
 
 ## 并查集
 
-### 普通并查集
+### 普通并查集(daoqi)
 
 只维护了fa以及每个集合的元素数量，维护其他信息可以手搓
 
@@ -2012,7 +2012,7 @@ struct DSU {
 
 \newpage
 
-### 带权并查集
+### 带权并查集(daoqi)
 
 ```cpp
 template<class T>
@@ -2080,7 +2080,7 @@ Alice 和 Bob 在玩一个游戏：他写一个由 0 和 1 组成的序列�
 
 \newpage
 
-### 可撤销并查集
+### 可撤销并查集(daoqi)
 
 ```cpp
 struct DSU {
@@ -2135,6 +2135,204 @@ struct DSU {
     }
 };
 ```
+
+## 并查集2
+
+并查集是维护无向图连通性的数据结构，它本质是一个森林，它通过$root$操作找到每个点的根节点，通过$merge$操作合并节点，从而维护连通性。
+
+并查集有两个重要的优化，按秩合并和路径压缩，这两种方法截然不同且适用场景也不同，但目的都是为了减小时间复杂度。但往往我们认为 路径压缩更高效，甚至可以视作均摊$O(1)$
+
+先说按秩合并，按秩合并的本质是维护树高，也就是说按某个标准合并可以保证树高不会太高，假如我们用$Height$数组表示树高，那么合并时如果$Height(x)<Height(y)$，我们就把$x$合并给$y$。当然我们的标准不止有树高，也可以根据子树大小按秩合并
+
+再说路径压缩，路径压缩实际上是在$root$过程中调整并查集结构的做法，实际上也是在减小树高，如果$y$是$x$所在连通块的根，且是$x$的$k$级祖先，那么我们第一次查找$root(x)$自然需要跳$k$次，但我们这次操作之后，自然知道$pre(x) = y$,于是我们在$root$过程中重新调整$pre(x)$,使得树高直接减小为$1$
+
+### 并查集(路径压缩)
+
+```cpp
+struct DSU
+{
+    int n;
+    std::vector<int> pre;
+    DSU(int n) : n(n), pre(n + 1)
+    {
+        for (int i = 1; i <= n; ++i)
+        {
+            pre[i] = i;
+        }
+    }
+    int root(int x)
+    {
+        return pre[x] = (pre[x] == x ? x : root(pre[x]));
+    }
+    void merge(int x, int y)
+    {
+        pre[root(x)] = root(y);
+    }
+    bool iscon(int x, int y)
+    {
+        return root(x) == root(y);
+    }
+};
+```
+
+### 并查集(按秩合并)
+
+```cpp
+struct DSU
+{
+    int n;
+    std::vector<int> pre;
+    std::vector<int> siz;
+    DSU(int n) : n(n), pre(n + 1), siz(n + 1)
+    {
+        for (int i = 1; i <= n; ++i)
+        {
+            pre[i] = i;
+            siz[i] = 1;
+        }
+    }
+    int root(int x)
+    {
+        return pre[x] = (pre[x] == x ? x : root(pre[x]));
+    }
+    void merge(int x, int y)
+    {
+        int xx = root(x), yy = root(y);
+        if(xx==yy)
+        {
+            return;
+        }
+        if (siz[xx] < siz[yy])
+        {
+            std::swap(xx, yy);
+        }
+        pre[yy] = xx;
+        siz[xx] += siz[yy];
+    }
+    bool iscon(int x, int y)
+    {
+        return root(x) == root(y);
+    }
+};
+```
+
+### 带权并查集
+
+带权并查集，很多时候我们不仅仅需要维护连通性之间的关系，还需要维护其他信息，需要使用带权并查集，带权并查集的信息全都是该节点到根节点的信息总和。这一点是理解带权并查集的根本
+
+我们以$val$为例，$val(u)$代表$u$到其根节点的边权异或和。
+
+在带权并查集中我们仍然能使用路径压缩，但需要在压缩过程中维护正确的信息,也就是说，在我更改我的$pre$时，还要维护$val$的正确性，因为我的初始路径在压缩后，这个路径的信息也应该被压缩到我上面
+
+举例来说,一开始路径为$u =>pre[u]=>root$,我们路径压缩后变为$u=>root$!，但是我们的$u$节点丢失了$pre[u]=>root$路径上的信息，我们在递归时直接把信息整合到到$val[u]$上即可,除了$root$的直接儿子外，其他儿子都需要维护$val$。
+
+```cpp
+struct DSU
+{
+    int n;
+    std::vector<int> pre, val;
+
+    int root(int x) // 路径压缩并更新信息
+    {
+        if (pre[x] == x)
+        {
+            return x;
+        }
+        int fa = root(pre[x]);
+        val[x] ^= val[pre[x]];
+        pre[x] = fa;
+        return fa;
+    }
+    DSU(int n) : n(n), pre(n + 1), val(n + 1)
+    {
+        for (int i = 1; i <= n; ++i)
+        {
+            pre[i] = i;
+            val[i] = 0;/
+        }
+    }
+    bool merge(int u, int v, int w) // 加入一条长度为w的边
+    {
+        int a = root(u), b = root(v);
+        if (a == b)
+        {
+            return false;
+        }
+        else
+        {
+            pre[b] = a;
+            val[b] = val[u] ^ val[v] ^ w;
+            return true;
+        }
+    }
+};
+```
+
+### 回滚并查集
+
+由于并查集的特性，并查集并不支持删除，但可以支持撤销操作，原理十分简单，就是把所有操作记下来，撤销就是还原之前的修改，我们称为回滚并查集，注意回滚并查集只能使用按秩合并，而不能路径压缩。
+
+```cpp
+struct DSU
+{
+    int n;
+    std::vector<int> pre;
+    std::vector<int> siz;
+    std::vector<std::pair<int &, int>> rollback_siz, rollback_pre;
+    DSU(int n) : n(n), pre(n + 1), siz(n + 1)
+    {
+        for (int i = 1; i <= n; ++i)
+        {
+            pre[i] = i;
+            siz[i] = 1;
+        }
+    }
+    int root(int x)
+    {
+        while (x != pre[x])
+        {
+            x = pre[x];
+        }
+        return x;
+    }
+    int Size(int x)
+    {
+        return siz[root(x)];
+    }
+    void merge(int x, int y)
+    {
+        int xx = root(x), yy = root(y);
+        if (xx == yy)
+        {
+            return;
+        }
+        if (siz[xx] < siz[yy])
+        {
+            std::swap(xx, yy);
+        }
+        rollback_siz.push_back({siz[xx], siz[xx]});
+        siz[xx] += siz[yy];
+        rollback_pre.push_back({pre[yy], pre[yy]});
+        pre[yy] = xx;
+    }
+    bool iscon(int x, int y)
+    {
+        return root(x) == root(y);
+    }
+    void rollback(int t) // 只保留前t次操作
+    {
+        while (rollback_siz.size() > t)
+        {
+            rollback_pre.back().first = rollback_pre.back().second;
+            rollback_pre.pop_back();
+            rollback_siz.back().first = rollback_siz.back().second;
+            rollback_siz.pop_back();
+        }
+    }
+};
+```
+
+
 
 \newpage
 

@@ -187,6 +187,8 @@ $dfn$序的定义:按先遍历重儿子的顺序得到的 $dfs$ 序。
 
 每次经过轻儿子，子树大小至少会减半，因此最多下降 $O(logn)$ 次。 
 
+***使用时自己新开数组的话一定记得在构造函数那里分配内存！！！***
+
 ```cpp
 template <class T>
 class TreePre
@@ -236,7 +238,8 @@ private:
 
 public:
     TreePre(std::vector<std::vector<std::pair<int, int>>> &g, int root)
-        : g(g), n(g.size() - 1), root(root), dep(n + 1), top(n + 1), son(n + 1), fa(n + 1), siz(n + 1), dfn(n + 1), idfn(n + 1), dis(n + 1)
+        : g(g), n(g.size() - 1), root(root), dep(n + 1), top(n + 1), son(n + 1), 
+    	fa(n + 1), siz(n + 1), dfn(n + 1), idfn(n + 1), dis(n + 1)
     {
         dep[root] = 1;
         dis[root] = 0;
@@ -344,11 +347,13 @@ public:
 template <class T>
 class TreePre
 {
-private:
+public:
     int n;
     int idx = 0;
     int root;
     std::vector<std::vector<std::pair<int, int>>> &g;
+    std::vector<int> dfn, idfn, siz, fa, dep, top, son;
+    std::vector<T> dis;
     void dfs1(int u, int f)
     {
         fa[u] = f;
@@ -382,17 +387,16 @@ private:
             }
         }
     }
-public:
     TreePre(std::vector<std::vector<std::pair<int, int>>> &g, int root)
-        : g(g), n(g.size() - 1), root(root), dep(n + 1), top(n + 1), son(n + 1), fa(n + 1), siz(n + 1), dfn(n + 1), idfn(n + 1), dis(n + 1)
+        : g(g), n(g.size() - 1), root(root), dep(n + 1), top(n + 1), son(n + 1), 
+    		fa(n + 1), siz(n + 1), dfn(n + 1), idfn(n + 1), dis(n + 1)
     {
         dep[root] = 1;
         dis[root] = 0;
         dfs1(root, 0);
         dfs2(root, root);
     }
-    std::vector<int> dfn, idfn, siz, fa, dep, top, son;
-    std::vector<T> dis;
+   
     int getLca(int u, int v) // u和v在指定根下的lca
     {
         while (top[u] != top[v]){
@@ -2136,6 +2140,138 @@ struct BoruvkaMST{
     }
 };
 ```
+
+### kruskal重构树
+
+用于瓶颈路相关问题，可以在$logn$时间内求出图上两点之间最大最小边权问题。但重构树并不一定只能维护边权,例如，我们可以把边出现的时间当作边权维护，从而达到维护连通性的效果，我们适当的把其他元素转化为边权能起到很好的效果.
+
+```cpp
+class KruskalTree
+{
+private:
+    DSU dsu;
+    std::vector<int> lc, rc, val;
+    int idx;
+    std::vector<std::vector<int>> fa;
+    std::vector<int> dep;
+    int lg;
+
+public:
+    // 构造函数，初始化并构建重构树
+    KruskalTree(const std::vector<std::array<int, 3>> &g, int n)
+        : lc(2 * n + 1),
+          rc(2 * n + 1),
+          val(2 * n + 1),
+          idx(n),
+          dsu(2 * n),
+          dep(2 * n + 1)
+    {
+
+        // 计算二进制提升的最大层数
+        lg = std::__lg(2 * n + 1);
+        fa.assign(2 * n + 1, std::vector<int>(lg + 1, 0));
+
+        // 按边权从大到小排序
+        auto e = g;
+        std::sort(e.begin(), e.end(),
+                  [](const auto &a, const auto &b)
+                  { return a[2] < b[2]; });
+
+        // 构建Kruskal重构树
+        for (const auto &[u, v, w] : e)
+        {
+            if (dsu.root(u) != dsu.root(v))
+            {
+                ++idx;
+                int rootU = dsu.root(u);
+                int rootV = dsu.root(v);
+                lc[idx] = rootU;
+                rc[idx] = rootV;
+                dsu.pre[rootU] = idx;
+                dsu.pre[rootV] = idx;
+                val[idx] = w;
+            }
+            if (idx == 2 * n - 1)
+            {
+                break;
+            }
+        }
+
+        // DFS预处理二进制提升表
+        auto dfs = [&](auto &&self, int u, int parent) -> void
+        {
+            fa[u][0] = parent;
+            for (int i = 1; i <= lg; ++i)
+            {
+                fa[u][i] = fa[fa[u][i - 1]][i - 1];
+            }
+            if (lc[u])
+            {
+                dep[lc[u]] = dep[u] + 1;
+                self(self, lc[u], u);
+            }
+            if (rc[u])
+            {
+                dep[rc[u]] = dep[u] + 1;
+                self(self, rc[u], u);
+            }
+        };
+
+        // 从根节点开始DFS
+        for (int i = idx; i >= 1; --i)
+        {
+            if (!dep[i])
+            {
+                dep[i] = 1;
+                dfs(dfs, i, 0);
+            }
+        }
+    }
+
+    // 查询两个节点的最近公共祖先
+    int getLca(int u, int v) const
+    {
+        if (dep[u] < dep[v])
+        {
+            std::swap(u, v);
+        }
+        // 提升u到与v相同深度
+        for (int i = lg; i >= 0; --i)
+        {
+            if (dep[fa[u][i]] >= dep[v])
+            {
+                u = fa[u][i];
+            }
+        }
+        if (u == v)
+        {
+            return u;
+        }
+        // 同时提升u和v
+        for (int i = lg; i >= 0; --i)
+        {
+            if (fa[u][i] != fa[v][i])
+            {
+                u = fa[u][i];
+                v = fa[v][i];
+            }
+        }
+        return fa[u][0];
+    }
+    int getVal(int x)
+    {
+        return val[x];
+    }
+    bool isConnected(int u, int v)
+    {
+        return dsu.root(u) == dsu.root(v);
+    }
+};
+```
+
+### 
+
+
 
 \newpage
 

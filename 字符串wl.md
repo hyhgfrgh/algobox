@@ -8,6 +8,8 @@ std::vector M = {1610612741, 805306457, 402653189, 201326611, 100663319, 1000000
 
 注意哈希传入的字符串都是$1-index$ 
 
+Base用(rng()%100000)+256,  P从M中随机选
+
 ### 有序字符串哈希
 
 我们考虑哈希函数为 $f(n)=\sum_{i=1}^n s[i]*Base^{n-i}$,那么假设我们预处理出了所有的位置$i$对应的$f(i)$,
@@ -299,7 +301,7 @@ void solve2(){
 字符 $s$ 中最大的回文串长度为$max\{r[i]-1\}$ 
 
 ```cpp
-// s 为 0-base
+// 传入的 s 为 0-base
 std::vector<int> manacher(std::string s) {
     std::string t = " #";
     for (auto c: s) {
@@ -327,6 +329,17 @@ bool isPalindrome(std::vector<int> &R, int l, int r) {
     int p = (l + (r - l + 1) / 2) * 2;
     if ((r - l + 1) % 2 == 0) p--;
     return R[p] >= (r - l + 1);
+}
+// 对于manacher返回的r数组，询问位置i对应回文子串在原串中的端点l,r
+// 返回的  l, r  为1-base
+// 返回的  l > r 表示i为#且i两侧对应的字符不相等
+pair<int,int> queryLR(int i,const vector<int>& R){
+    int len = R[i] - 1;
+    // (i - len) 是回文串在 t 中的起始位置
+    // 除以 2 再加 1 正好对应 1-base 的起点
+    int l = (i - len) / 2 + 1; 
+    int r = l + len - 1;
+    return {l,r};
 }
 ```
 
@@ -603,3 +616,5 @@ void solve(){
     }
 }
 ```
+
+## Trick
