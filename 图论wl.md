@@ -896,6 +896,8 @@ struct VirtualTreePre
 
 对于$DAG$点对可达情况我们可以$bitset$优化,即$f(u) |= f(v)$
 
+ps:算一个DAG有多少种可能的topo序 是一个经典的 #P-完全问题（#P-complete）
+
 ```cpp
 struct Toposort{
     int n;                           // 节点数量

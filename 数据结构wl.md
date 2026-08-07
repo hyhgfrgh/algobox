@@ -1822,7 +1822,8 @@ struct Trie {
 
     std::vector<node> t;
 
-    Trie() {
+    Trie(int expected_nodes = 100005) {
+        t.reserve(expected_nodes); 
         init();
     }
 
@@ -1837,10 +1838,11 @@ struct Trie {
 
     void insert(const std::string &val) {
         int p = 0;
-        for (char c: val) {
+        for (char c : val) {
             int ne = c - 'a';
             if (t[p].son[ne] == 0) {
-                t[p].son[ne] = newnode();
+                int u = newnode(); 
+                t[p].son[ne] = u;
             }
             p = t[p].son[ne];
         }
@@ -1849,7 +1851,7 @@ struct Trie {
 
     int query(const std::string &val) {
         int p = 0;
-        for (char c: val) {
+        for (char c : val) {
             int ne = c - 'a';
             if (t[p].son[ne] == 0) {
                 return 0;
@@ -1859,6 +1861,64 @@ struct Trie {
         return t[p].cnt;
     }
 };
+```
+\newpage
+### 可合并字典树
+
+每次 `insert` 一个数字（假设值域是 $2^{30}$），你会创建 $30$ 个新节点
+
+每次 `merge` 发生实打实的递归（也就是没有被 `if (!x || !y)` 挡回去），就必定伴随着一个节点的“消灭
+
+总共只有 $30N$ 个节点，所以哪怕你无聊到不停地合并，整个程序运行期间发生合并的总次数也绝对不可能超过 $30N$。
+
+```cpp
+struct TrieForest {
+    struct node {
+        std::array<int, 2> son;
+        node() : son{} {}
+    };
+
+    std::vector<node> t;
+
+    TrieForest(int expected_nodes = 2000000) {
+        t.reserve(expected_nodes);
+        t.emplace_back();
+    }
+
+    int newnode() {
+        t.emplace_back();
+        return t.size() - 1;
+    }
+
+    void insert(int &root, int val) {
+        if (!root) root = newnode();
+        int p = root;
+        
+        for (int i = 30; i >= 0; --i) {
+            int ne = (val >> i) & 1;
+            if (t[p].son[ne] == 0) {
+                int u = newnode();
+                t[p].son[ne] = u;
+            }
+            p = t[p].son[ne];
+        }
+    }
+	
+    int merge(int x, int y) {
+        if (!x || !y) return x + y;
+        
+        t[x].son[0] = merge(t[x].son[0], t[y].son[0]);
+        t[x].son[1] = merge(t[x].son[1], t[y].son[1]);
+        
+        return x;
+    }
+};
+```
+
+```cpp
+vector<int> root(n+1);
+insert(root[u],val);
+root[u] = merge(root[u],root[v]);
 ```
 
 \newpage
