@@ -3344,3 +3344,53 @@ public:
     }
 };
 ```
+
+\newpage
+
+### 维护凸包
+
+下面为维护下凸包的板子
+如果要维护上凸包只需要反转check中的<=和>=符号,对应的findPos返回斜率最小的匹配点(切点),其他地方无需改动
+
+```cpp
+	// 维护下凸包
+    // (如果需要维护上凸包只需要反转check中的<=和>=符号,对应的findPos返回斜率最小的匹配点)
+    vector<pair<int,int>> stk;
+    // return Kxy >= Kyz (如果是严格下凸包，遇到等于也需要弹栈，视具体题目而定)
+    auto check = [&](const pair<int, int>& x, const pair<int, int>& y, const pair<int, int>& z) {
+        long long dx1 = y.first - x.first;
+        long long dy1 = y.second - x.second;
+        long long dx2 = z.first - y.first;
+        long long dy2 = z.second - y.second;
+        
+        long long t = dx1 * dx2;
+        if (t >= 0) return dy1 * dx2 >= dy2 * dx1;
+        else return dy1 * dx2 <= dy2 * dx1;
+    };
+    auto addStk = [&](pair<int,int> t)->void{
+        auto [x,y] = t;
+        while (stk.size() > 1) {
+            int sz = stk.size();
+            if (check(stk[sz - 2], stk[sz - 1], {x, y})) {
+                stk.pop_back();
+            } else {
+                break;
+            }
+        }
+        stk.push_back({x, y});
+    };
+    // 找到点(x,y)斜率最大的匹配点
+    auto findPos = [&](int x,int y)->int{
+        if (stk.empty()) return -1;
+        if (stk.size() == 1) return 0;
+
+        int l = 0, r = stk.size() - 2; 
+        while (l + 1 < r) {
+            int mid = l + (r - l) / 2; // 防溢出
+            if (check(stk[mid], {x, y}, stk[mid + 1])) r = mid;
+            else l = mid;
+        }
+        return check(stk[l], {x, y}, stk[l + 1]) ? l : l+1;
+    };
+```
+
