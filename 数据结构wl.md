@@ -3349,6 +3349,92 @@ public:
 
 ### 维护凸包
 
+类封装板子
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+/**
+ * @tparam IS_UPPER 
+ *         false: 下凸包，用于与右侧目标点连线求【最大斜率】（默认）
+ *         true:  上凸包，用于与右侧目标点连线求【最小斜率】
+ */
+template <bool IS_UPPER = false>
+class ConvexHullSlope {
+private:
+    vector<pair<long long, long long>> stk;
+
+    bool check(const pair<long long, long long>& x, 
+               const pair<long long, long long>& y, 
+               const pair<long long, long long>& z) const {
+        long long dx1 = y.first - x.first;
+        long long dy1 = y.second - x.second;
+        long long dx2 = z.first - y.first;
+        long long dy2 = z.second - y.second;
+        
+        long long t = dx1 * dx2;
+        if constexpr (IS_UPPER) {
+            if (t >= 0) return dy1 * dx2 <= dy2 * dx1;
+            else return dy1 * dx2 >= dy2 * dx1;
+        } else {
+            if (t >= 0) return dy1 * dx2 >= dy2 * dx1;
+            else return dy1 * dx2 <= dy2 * dx1;
+        }
+    }
+
+public:
+    ConvexHullSlope() = default;
+    // 清空凸包
+    void clear() {
+        stk.clear();
+    }
+    // 获取当前凸包大小
+    int size() const {
+        return (int)stk.size();
+    }
+    // 判空
+    bool empty() const {
+        return stk.empty();
+    }
+    // 向凸包中添加一个点 (自动维护凸包形态)
+    void add(long long x, long long y) {
+        while (stk.size() > 1) {
+            int sz = stk.size();
+            if (check(stk[sz - 2], stk[sz - 1], {x, y})) {
+                stk.pop_back();
+            } else {
+                break;
+            }
+        }
+        stk.push_back({x, y});
+    }
+    void add(const pair<long long, long long>& p) {
+        add(p.first, p.second);
+    }
+    // 在凸包上二分查找与点 (x, y) 连线达到极值的匹配点索引
+    // 下凸包返回最大斜率点，上凸包返回最小斜率点
+    int findPos(long long x, long long y) const {
+        if (stk.empty()) return -1;
+        if (stk.size() == 1) return 0;
+
+        int l = 0, r = (int)stk.size() - 2; 
+        while (l + 1 < r) {
+            int mid = l + (r - l) / 2; 
+            if (check(stk[mid], {x, y}, stk[mid + 1])) r = mid;
+            else l = mid;
+        }
+        return check(stk[l], {x, y}, stk[l + 1]) ? l : l + 1;
+    }
+    // 支持通过下标访问凸包内的点
+    pair<long long, long long> operator[](int idx) const {
+        return stk[idx];
+    }
+};
+```
+
+未封装版:
+
 下面为维护下凸包的板子
 如果要维护上凸包只需要反转check中的<=和>=符号,对应的findPos返回斜率最小的匹配点(切点),其他地方无需改动
 
@@ -3392,5 +3478,32 @@ public:
         }
         return check(stk[l], {x, y}, stk[l + 1]) ? l : l+1;
     };
+```
+
+延迟维护的使用例子
+
+```cpp
+	queue<pair<int,int>> q;
+    long double ans = 0;
+    for(int i = 1,cur = 0;i<=n;i++){
+        // 待加入的点
+        if(s[i] == 'o' and s[i-1] != 'o'){
+            q.push({i-1,cur});
+        }
+        cur += (s[i] == 'o');
+        // 满足加入条件
+        while(q.size() and cur-q.front().second>=k) {
+            addStk(q.front());
+            q.pop();
+        }
+        // 需要计算的点
+        if(s[i] == 'o' and s[i+1] != 'o'){
+            int p = findPos(i, cur);
+            if(p == -1) continue;
+            int l = i-stk[p].first,y = cur-stk[p].second;
+            ans = max(ans,1.0L*y/l);
+        }
+    }
+    cout<<fixed<<setprecision(10)<<ans<<"\n";
 ```
 
