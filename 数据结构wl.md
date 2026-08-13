@@ -3324,7 +3324,7 @@ class DescartesTree
 public:
     int n, root;
     std::vector<int> lc, rc;
-    DescartesTree(std::vector<int> &a) : n(a.size) - 1, lc(n + 1), rc(n + 1)
+    DescartesTree(std::vector<int> &a) : n(a.size()-1) , lc(n + 1), rc(n + 1)
     {
         root = std::min_element(begin(a) + 1, end(a)) - begin(a);
         std::vector<int> stk(n + 1, 0);
