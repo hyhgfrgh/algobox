@@ -534,7 +534,142 @@ private:
 
 覆盖标记和加标记的处理方法：
 
-区间覆盖和区间加，关键在于懒标记之间的清除关系，在我们操作$cover$标记时，要清空对应位置的$add$标记，这样才能保证信息维护的正确性。具体来讲，什么叫清空对应位置的$add$标记呢？也就是说，一旦我们更新了$u$位置的$cover$信息，我们就要立刻把$u$位置的$add$信息清除掉，因为显然他不会再起到作用，而且在$pushdown$的时候我们要先处理$cover$标记，原因仍然是我们可能会清除$add$标记
+区间覆盖(cov)和区间加(add)，关键在于懒标记之间的清除关系，在我们操作$cover$标记时，要清空对应位置的$add$标记，这样才能保证信息维护的正确性。具体来讲，什么叫清空对应位置的$add$标记呢？也就是说，一旦我们更新了$u$位置的$cover$信息，我们就要立刻把$u$位置的$add$信息清除掉，因为显然他不会再起到作用，而且在$pushdown$的时候我们要先处理$cover$标记，原因仍然是我们可能会清除$add$标记
+
+如下为支持区间cover+add的lazy线段树，注意cov=-1表示没有覆盖，若覆盖的值有-1可以用inf表示没有覆盖
+
+```cpp
+template <class T>
+class SegmentTree
+{
+#define lc u << 1
+#define rc u << 1 | 1
+public:
+    struct Node
+    {
+        int l, r;
+        T add, sum, cov;
+    };
+
+    SegmentTree(const std::vector<T> &a) : n(a.size()), tr(4 * n)
+    {
+        n--;
+        std::function<void(int, int, int)> build = [&](int u, int l, int r)
+        {
+            tr[u] = {l, r, 0, a[l], -1};
+            if (l == r)
+            {
+                return;
+            }
+            int mid = (l + r) >> 1;
+            build(lc, l, mid);
+            build(rc, mid + 1, r);
+            pushup(u);
+        };
+        build(1, 1, n);
+    }
+    void rangeAdd(int l, int r, T val)
+    {
+        rangeAdd(1, 1, n, l, r, val);
+    }
+    T rangeQuerySum(int l, int r)
+    {
+        return rangeQuerySum(1, 1, n, l, r);
+    }
+    void rangeCover(int l,int r,T k){
+        rangeCover(1,1,n,l,r,k);
+    }
+private:
+    int n;
+    std::vector<Node> tr;
+    void pushup(int u)
+    {
+        tr[u].sum = tr[lc].sum + tr[rc].sum;
+    }
+    void pushdown(Node &u, T add,T cov)
+    {
+        if(cov != -1){
+            u.sum = (u.r-u.l+1)*(cov+add);
+            u.add = add;u.cov = cov;
+        }else{
+            u.sum += add * (u.r - u.l + 1);
+            u.add += add;
+        }
+    }
+    void pushdown(int u)
+    {
+        if (tr[u].add || tr[u].cov != -1)
+        {
+            pushdown(tr[lc], tr[u].add,tr[u].cov);
+            pushdown(tr[rc], tr[u].add,tr[u].cov);
+            tr[u].add = 0;
+            tr[u].cov = -1;
+        }
+    }
+    void rangeAdd(int u, int l, int r, int x, int y, T k)
+    {
+        if (x <= l && y >= r)
+        {
+            pushdown(tr[u], k, -1);
+            return;
+        }
+        int mid = (l + r) >> 1;
+        pushdown(u);
+        if (x <= mid)
+        {
+            rangeAdd(lc, l, mid, x, y, k);
+        }
+        if (y > mid)
+        {
+            rangeAdd(rc, mid + 1, r, x, y, k);
+        }
+        pushup(u);
+    }
+    void rangeCover(int u, int l, int r, int x, int y, T k)
+    {
+        if (x <= l && y >= r)
+        {
+            pushdown(tr[u], 0, k);
+            return;
+        }
+        int mid = (l + r) >> 1;
+        pushdown(u);
+        if (x <= mid)
+        {
+            rangeCover(lc, l, mid, x, y, k);
+        }
+        if (y > mid)
+        {
+            rangeCover(rc, mid + 1, r, x, y, k);
+        }
+        pushup(u);
+    }
+    
+    T rangeQuerySum(int u, int l, int r, int x, int y)
+    {
+        if (x <= l && y >= r)
+        {
+            return tr[u].sum;
+        }
+        int mid = (l + r) >> 1;
+        pushdown(u);
+        T res = 0;
+        if (x <= mid)
+        {
+            res += rangeQuerySum(lc, l, mid, x, y);
+        }
+        if (y > mid)
+        {
+            res += rangeQuerySum(rc, mid + 1, r, x, y);
+        }
+        return res;
+    }
+};
+```
+
+
+
+
 
 \newpage
 
@@ -1457,6 +1592,395 @@ struct RedBlackTree
 };
 ```
 
+
+
+## FHQtreap
+$FHQ$维护平衡的方式是它对每个节点都随机一个类似于优先级的权值来维护平衡，通过这种操作使得树高的期望值为$O(nlogn)$,在代码中我们用$key$表示，其核心操作是$Split$和$Merge$，具体的说,$Split$函数分别有四个参数，表示把根节点$U$分成$x$和$y$两棵子树，其左子树的值小于等于$val$，右子树的值大于$val$，
+
+$Split$最最最容易出错的地方是我们每次$Split$后必须重新合并！，不合并将会破坏整棵树的结构！
+
+我们用root表示根，而$merge$函数的返回值为$int$,也就是说当我们$split(root,val,x,y)$后，需要进行操作$root = merge(x,y)$。这两个函数十分容易理解，$split$根据$BST$左小右大的性质递归分裂即可，对于$merge$，我们需要用到一开始随机的优先级权值来决定合并顺序，以此维护树高的期望为$logn$
+
+### 维护值域
+我们可以理解为是进阶版的超级$set$和$multiset$,几乎支持维护数组值域上所有的操作，且均为单次操作$O(nlogn)$
+
+```cpp
+template <class T>
+class FHQTreap
+{
+public:
+    FHQTreap(const std::vector<T> &a) : n(a.size()), tr(n) // 只有初始大小
+    {
+        for (int i = 1; i <= n - 1; ++i)
+        {
+            multiInsert(a[i]);
+        }
+    }
+    FHQTreap(int n) : n(n), tr(n) {} // 没有初始大小
+    void multiInsert(T val)          // 插入一个值为val的点
+    {
+        int x, y, z;
+        split(root, val, x, y);       // 从val分开
+        newNode(z, val);              // 开新节点
+        root = merge(merge(x, z), y); // 合并
+    }
+
+    bool singleInsert(T val) // set
+    {
+        if (!checkIsExist(val))
+        {
+            int x, y, z;
+            split(root, val, x, y);       // 从val分开
+            newNode(z, val);              // 开新节点
+            root = merge(merge(x, z), y); // 合并
+            return true;
+        }
+        return false;
+    }
+
+    bool checkIsExist(T val) // check有没有这个数
+    {
+        int x, y, z;
+        split(root, val, x, y);
+        split(x, val - 1, x, z);
+        int ans = tr[z].size;
+        root = merge(merge(x, z), y);
+        return ans > 0;
+    }
+
+    int getNum(T val)
+    {
+        int x, y, z;
+        split(root, val, x, y);
+        split(x, val - 1, x, z);
+        int ans = tr[z].size;
+        root = merge(merge(x, z), y);
+        return ans;
+    }
+
+    void eraseOne(T val) // 删除一个值为val的点
+    {
+        int x, y, z;
+        split(root, val, x, z);       // 先把root 分成x和z x是左子树上面的值都<=val
+        split(x, val - 1, x, y);      // 把x分成x和y两颗子树 其中x上面的值都小于等于val-1;
+        y = merge(tr[y].l, tr[y].r);  // 把拆下来的y子树的左右子树连到一起  //根节点已经没了 搞掉一个根节点
+        root = merge(merge(x, y), z); // 最后重新合并
+    }
+
+    void eraseAll(T val) // 全部删掉
+    {
+        int x, y, z;
+        split(root, val, x, y);
+        split(x, val - 1, x, z);
+        root = merge(x, y);
+    }
+
+    T getAntiVal(int getRank)
+    {
+        return getAntiVal(root, getRank);
+    }
+    T getVal(int getRank) // 最大的为rank1
+    {
+        return getVal(root, getRank);
+    }
+
+    int getAntiRank(T val) //(从小到大 最小为rank1  如果大于了所有数 则会返回size+1  如果小于了所有数 则会返回1
+    {
+        int x, y;
+        split(root, val - 1, x, y);
+        int ans = tr[x].size + 1;
+        root = merge(x, y);
+        return ans;
+    }
+    int getRank(T val) //(从大到小 最大为rank1 如果大于了所有数 则会返回1  如果小于了所有数 则会返回size+1  有重复元素情况下 一律最优考虑
+    {
+        int x, y;
+        split(root, val, x, y);
+        int ans = tr[y].size + 1;
+        root = merge(x, y);
+        return ans;
+    }
+
+    T getPre(T val) // 不考虑重复元素
+    {
+        int x, y, z;
+        T ans;
+        split(root, val - 1, x, y);
+        ans = tr[x].size ? getAntiVal(x, tr[x].size) : -1; // 没有前缀
+        root = merge(x, y);
+        return ans;
+    }
+
+    T getNxt(T val) // 不考虑重复元素
+    {
+        int x, y, z;
+        T ans;
+        split(root, val, x, y);
+        ans = tr[y].size ? getAntiVal(y, 1) : -1; // 没有后缀
+        root = merge(x, y);
+        return ans;
+    }
+
+private:
+    struct Node
+    {
+        int l, r, size;
+        T val;
+        int key;
+    };
+    int n;
+    std::vector<Node> tr;
+
+    int root = 0, idx = 0;
+
+    void newNode(int &u, T val)
+    {
+        u = ++idx;
+        if (tr.size() <= idx)
+        {
+            tr.resize(idx + 1);
+        }
+        tr[u].val = val;
+        tr[u].key = rand();
+        tr[u].size = 1;
+    }
+
+    void pushup(int u)
+    {
+        tr[u].size = tr[tr[u].l].size + tr[tr[u].r].size + 1;
+    }
+
+    void split(int u, T val, int &x, int &y) // 按权值分裂 左子树小于等于val 右子树大于val
+    {
+        if (!u)
+        {
+            x = 0;
+            y = 0;
+            return;
+        }
+        if (tr[u].val <= val)
+        {
+            x = u;
+            split(tr[x].r, val, tr[x].r, y);
+            pushup(x);
+        }
+        else
+        {
+            y = u;
+            split(tr[y].l, val, x, tr[y].l);
+            pushup(y);
+        }
+    }
+    int merge(int x, int y) // 合并 都一样
+    {
+        if (!x || !y)
+        {
+            return x + y;
+        }
+        if (tr[x].key < tr[y].key)
+        {
+            tr[x].r = merge(tr[x].r, y);
+            pushup(x);
+            return x;
+        }
+        else
+        {
+            tr[y].l = merge(x, tr[y].l);
+            pushup(y);
+            return y;
+        }
+    }
+    T getAntiVal(int root, int rank) // 考虑重复元素  最小的为rank1
+    {
+        if (rank > tr[root].size or rank < 1) // 没有这么多数
+        {
+            return -1;
+        }
+        if (rank == tr[tr[root].l].size + 1)
+        {
+            return tr[root].val;
+        }
+        else if (rank <= tr[tr[root].l].size)
+        {
+            return getAntiVal(tr[root].l, rank);
+        }
+        else
+        {
+            return getAntiVal(tr[root].r, rank - tr[tr[root].l].size - 1);
+        }
+    }
+    T getVal(int root, int rank) // 考虑重复元素   最大的为rank1
+    {
+        if (rank > tr[root].size or rank < 1) // 没有这么多数
+        {
+            return -1;
+        }
+        if (rank == tr[tr[root].r].size + 1)
+        {
+            return tr[root].val;
+        }
+        else if (rank <= tr[tr[root].r].size)
+        {
+            return getVal(tr[root].r, rank);
+        }
+        else
+        {
+            return getVal(tr[root].l, rank - tr[tr[root].r].size - 1);
+        }
+    }
+};
+```
+
+### 维护区间
+又称文艺平衡树，我们可以像线段树一样维护各种信息且支持懒标记操作。
+
+特别的，文艺平衡树具有特别的区间翻转功能，是线段树所不具备的。
+
+```cpp
+template <class T>
+struct FHQTreap
+{
+
+public:
+    FHQTreap(const std::vector<T> &a) : n(a.size()), tr(n) // 开二倍防止新点RE
+    {
+        for (int i = 1; i < n; ++i)
+        {
+            root = merge(root, newNode(a[i]));
+        }
+    }
+    void insert(int pos, T val) // 在pos后面插入一个值为val的点
+    {
+        int x, y;
+        split(root, pos, x, y);
+        root = merge(merge(x, newNode(val)), y);
+    }
+    void del(int pos) // 删除pos位置的点
+    {
+        int x, y, z;
+        split(root, pos, x, z);
+        split(x, pos - 1, x, y);
+        root = merge(x, z);
+    }
+    void reverse(int l, int r)
+    {
+        int x, y, z;
+        split(root, r, x, z);  // 从val=r的位置裂为x和z x为左子树
+        split(x, l - 1, x, y); // 从val=l-1的位置裂为x和y x仍为左子树
+        tr[y].tag ^= 1;        // 相当于找到了起点l
+        root = merge(merge(x, y), z);
+    }
+    T SingleQuery(int pos)
+    {
+        int x, y, z;
+        split(root, pos, x, y);
+        split(x, pos - 1, x, z);
+        T res = tr[z].val;
+        root = merge(merge(x, z), y);
+        return res;
+    }
+    T RangeQuery(int l, int r)
+    {
+        int x, y, z;
+        split(root, r, x, y);
+        split(x, l - 1, x, z);
+        T res = tr[z].sum;
+        root = merge(merge(x, z), y);
+        return res;
+    }
+
+private:
+    struct Node
+    {
+        int l, r, key, size, tag;
+        T val, sum;
+    };
+    int n;
+    std::vector<Node> tr;
+    int root = 0, idx = 0;
+
+    int newNode(T val)
+    {
+        ++idx;
+        if (tr.size() <= idx)
+        {
+            tr.resize(idx + 1);
+        }
+        tr[idx].val = val;
+        tr[idx].key = rand();
+        tr[idx].size = 1;
+        tr[idx].sum = val;
+        return idx;
+    }
+    void pushup(int u)
+    {
+        tr[u].size = tr[tr[u].l].size + tr[tr[u].r].size + 1;
+        tr[u].sum = tr[tr[u].l].sum + tr[tr[u].r].sum + tr[u].val;
+    }
+    void pushdown(int u)
+    {
+        if (tr[u].tag and u)
+        {
+            std::swap(tr[u].l, tr[u].r);
+            tr[tr[u].l].tag ^= 1;
+            tr[tr[u].r].tag ^= 1;
+            tr[u].tag = 0;
+        }
+    }
+    void split(int u, int rank, int &x, int &y) // split(root,num,x,y)表示把以root为根的子树的前num个数分给x
+    {
+        if (!u)
+        {
+            x = 0;
+            y = 0;
+            return;
+        }
+        pushdown(u);
+        if (rank > tr[tr[u].l].size)
+        {
+            rank -= tr[tr[u].l].size + 1;
+            x = u;
+            split(tr[u].r, rank, tr[u].r, y);
+        }
+        else
+        {
+            y = u;
+            split(tr[u].l, rank, x, tr[u].l);
+        }
+        pushup(u);
+    }
+    int merge(int x, int y)
+    {
+        if (!x || !y)
+        {
+            return x + y;
+        }
+        if (tr[x].key < tr[y].key)
+        {
+            pushdown(x);
+            tr[x].r = merge(tr[x].r, y);
+            pushup(x);
+            return x;
+        }
+        else
+        {
+            pushdown(y);
+            tr[y].l = merge(x, tr[y].l);
+            pushup(y);
+            return y;
+        }
+    }
+};
+
+```
+
+### 维护哈希
+由于线段树维护哈希功能存在一定的局限性，因为不支持插入与删除，所以我们也可以考虑平衡树维护。其维护的哈希函数方法和线段树完全一致，但和常规的字符串哈希不同，具体可以看线段树维护哈希的介绍，需要尤为注意。
+
+
+
+
+
 \newpage
 
 ## 哈希表
@@ -1871,6 +2395,18 @@ struct Trie {
 
 总共只有 $30N$ 个节点，所以哪怕你无聊到不停地合并，整个程序运行期间发生合并的总次数也绝对不可能超过 $30N$。
 
+如果是多测，可以把TrieForest开到全局，每次进入solve先调用clear()
+
+```cpp
+void solve() {
+    // 2. 每次进入测试用例时，只需 O(1) 清空即可
+    tr.clear(); 
+    
+    int root = 0;
+    tr.insert(root, 114514);
+}
+```
+
 ```cpp
 struct TrieForest {
     struct node {
@@ -1884,7 +2420,11 @@ struct TrieForest {
         t.reserve(expected_nodes);
         t.emplace_back();
     }
-
+	// 多测清空函数
+    void clear() {
+        t.clear();         // size归零，但前面reserve的capacity保留！
+        t.emplace_back();  // 重新塞入根节点0
+    }
     int newnode() {
         t.emplace_back();
         return t.size() - 1;
@@ -1950,7 +2490,7 @@ struct PerTrie {
     void add(T x, T y = 0) {
         int p = ++tot;
         ver.emplace_back(p);
-        for (int i = std::__lg(inf); i >= ; i--) {
+        for (int i = std::__lg(inf); i >= 0; i--) {
             int q = x >> i & 1; // q表示下一个二进制位
             while (p >= t.size())  t.emplace_back(); // 因为可能给某个节点已经分配了编号但是还没有分配空间
             t[p].son[q^1] = t[y].son[q^1];
