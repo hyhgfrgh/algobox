@@ -1592,16 +1592,16 @@ struct RedBlackTree
 };
 ```
 
+### FHQtreap
 
-
-## FHQtreap
 $FHQ$维护平衡的方式是它对每个节点都随机一个类似于优先级的权值来维护平衡，通过这种操作使得树高的期望值为$O(nlogn)$,在代码中我们用$key$表示，其核心操作是$Split$和$Merge$，具体的说,$Split$函数分别有四个参数，表示把根节点$U$分成$x$和$y$两棵子树，其左子树的值小于等于$val$，右子树的值大于$val$，
 
 $Split$最最最容易出错的地方是我们每次$Split$后必须重新合并！，不合并将会破坏整棵树的结构！
 
 我们用root表示根，而$merge$函数的返回值为$int$,也就是说当我们$split(root,val,x,y)$后，需要进行操作$root = merge(x,y)$。这两个函数十分容易理解，$split$根据$BST$左小右大的性质递归分裂即可，对于$merge$，我们需要用到一开始随机的优先级权值来决定合并顺序，以此维护树高的期望为$logn$
 
-### 维护值域
+#### 维护值域
+
 我们可以理解为是进阶版的超级$set$和$multiset$,几乎支持维护数组值域上所有的操作，且均为单次操作$O(nlogn)$
 
 ```cpp
@@ -1831,10 +1831,13 @@ private:
 };
 ```
 
-### 维护区间
+#### 维护区间
+
 又称文艺平衡树，我们可以像线段树一样维护各种信息且支持懒标记操作。
 
 特别的，文艺平衡树具有特别的区间翻转功能，是线段树所不具备的。
+
+>- 
 
 ```cpp
 template <class T>
@@ -1974,7 +1977,160 @@ private:
 
 ```
 
-### 维护哈希
+#### 权值唯一，维护权值对应位置
+
+如果每个节点的val唯一且需要维护每个val的位置，可以用posi数组维护某个val对应的二叉树节点和每个节点的fa,
+
+接着，沿着 `fa` 指针往上爬：
+
+- 如果当前节点 $u$ 是它父亲的**右儿子**，说明它父亲本身、以及它父亲的**左子树**里的所有节点，都排在 $u$ 的前面。所以排名加上 `sz[ls[fa[u]]] + 1`。
+- 如果当前节点 $u$ 是它父亲的**左儿子**，说明它父亲排在它后面，不用对排名做任何修改。
+
+
+
+```cpp
+template <class T>
+struct FHQTreap
+{
+
+public:
+    FHQTreap(const std::vector<T> &a) : n(a.size()),posi(a.size()), tr(n) // 开二倍防止新点RE
+    {
+        for (int i = 1; i < n; ++i)
+        {
+            root = merge(root, newNode(a[i]));
+        }
+    }
+    void insert(int pos, T val) // 在pos后面插入一个值为val的点
+    {
+        int x, y;
+        split(root, pos, x, y);
+        if(x) tr[x].fa = 0;
+        if(y) tr[y].fa = 0;
+        root = merge(merge(x, newNode(val)), y);
+        if(root) tr[root].fa = 0;
+    }
+    void del(int pos) // 删除pos位置的点
+    {
+        int x, y, z;
+        split(root, pos, x, z);
+        split(x, pos - 1, x, y);
+        if(x) tr[x].fa = 0;
+        if(y) tr[y].fa = 0;
+        if(z) tr[z].fa = 0;
+        root = merge(x, z);
+        if(root) tr[root].fa = 0;
+    }
+    T SingleQueryVal(int pos)
+    {
+        int x, y, z;
+        split(root, pos, x, y);
+        split(x, pos - 1, x, z);
+        if(x) tr[x].fa = 0;
+        if(y) tr[y].fa = 0;
+        if(z) tr[z].fa = 0;
+        T res = tr[z].val;
+        root = merge(merge(x, z), y);
+        if(root) tr[root].fa = 0;
+        return res;
+    }
+    T SingleQueryPos(int val){
+        int u = posi[val];
+        int res = (tr[u].l==0)?1:tr[tr[u].l].size+1;
+        while(tr[u].fa){
+            int fa = tr[u].fa;
+            if(tr[fa].r == u){
+                res += (tr[fa].l==0)?1:tr[tr[fa].l].size+1;
+            }
+            u = tr[u].fa;
+        }
+        return res;
+    }
+
+private:
+    struct Node
+    {
+        int l, r, key, size;
+        T val,  fa;
+    };
+    int n;
+    std::vector<Node> tr;
+    vector<int> posi;
+    int root = 0, idx = 0;
+
+    int newNode(T val)
+    {
+        ++idx;
+        posi[val] = idx;
+        if (tr.size() <= idx)
+        {
+            tr.resize(idx + 1);
+        }
+        tr[idx].val = val;
+        tr[idx].key = rand();
+        tr[idx].size = 1;
+        return idx;
+    }
+    void pushup(int u)
+    {
+        tr[tr[u].l].fa = tr[tr[u].r].fa = u;
+        tr[u].size = tr[tr[u].l].size + tr[tr[u].r].size + 1;
+    }
+    void pushdown(int u)
+    {
+    }
+    void split(int u, int rank, int &x, int &y) // split(root,num,x,y)表示把以root为根的子树的前num个数分给x
+    {
+        if (!u)
+        {
+            x = 0;
+            y = 0;
+            return;
+        }
+        pushdown(u);
+        if (rank > tr[tr[u].l].size)
+        {
+            rank -= tr[tr[u].l].size + 1;
+            x = u;
+            split(tr[u].r, rank, tr[u].r, y);
+        }
+        else
+        {
+            y = u;
+            split(tr[u].l, rank, x, tr[u].l);
+        }
+        pushup(u);
+    }
+    int merge(int x, int y)
+    {
+        if (!x || !y)
+        {
+            return x + y;
+        }
+        if (tr[x].key < tr[y].key)
+        {
+            pushdown(x);
+            tr[x].r = merge(tr[x].r, y);
+            pushup(x);
+            return x;
+        }
+        else
+        {
+            pushdown(y);
+            tr[y].l = merge(x, tr[y].l);
+            pushup(y);
+            return y;
+        }
+    }
+};
+```
+
+
+
+
+
+#### 维护哈希
+
 由于线段树维护哈希功能存在一定的局限性，因为不支持插入与删除，所以我们也可以考虑平衡树维护。其维护的哈希函数方法和线段树完全一致，但和常规的字符串哈希不同，具体可以看线段树维护哈希的介绍，需要尤为注意。
 
 
