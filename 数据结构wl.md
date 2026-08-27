@@ -158,7 +158,16 @@ struct Fenwick {
 };
 ```
 
-+ `select`函数返回前缀和$\leq k$的最大索引`x` ,复杂度$log(n)$  
++ `select`函数返回前缀和$\leq k$的最大索引`x` ,复杂度$log(n)$ 
+
+一些应用:
+
+1. 区间询问元素出现次数  query( l , r , x) 用树状数组离线实现(n+q)logn
+2. 带修的，
+   修改 a[pos] = x,查询 [l,r] 中 x 出现多少次
+   同样可以做到(n+q)logn
+   离线，先按x小到大，对每个x,在按与x相关的操作按操作时间从小到大
+3. 利用select树上二分维护集合第k大
 
 \newpage
 
@@ -309,7 +318,41 @@ struct Bit
 
 ## 线段树
 
+> 常见bug修复
+>
+> **1. 使用 `singleModify` 原地修改破坏了可持久化**
+>
+> - 持久化数据结构上的所有修改都必须通过新建节点（路径复制）完成，统一建新链。
+>
+> **2. `query` 递归判定条件错误**
+>
+> l,r,x,y没分清
+>
+> ```
+> if(l<=mid) { auto res = query(lc[u], ...); }
+> if(r>=mid+1) { auto res = query(rc[u], ...); }
+> ```
+>
+> ```
+> if (x <= mid) res = query(lc[u], l, mid, x, y);
+> if (y > mid) ...
+> ```
+>
+> **3. 空节点（节点 0）默认值导致 `query` 查询失效(一般出现在动态开点中)**
+>
+> **4. 建树/维护区间边界不一致**
+>
+> **5. 传入非法位置**
+
 ### 维护区间最值
+
+**Notice**: 单点修改，如果参数不再范围内可能会导致错误结果，
+
+比如 singleChange(0, T val)实际上会修改1,赛时注意或直接在
+
+``void singleChange(int pos, T val){singleChange(1, 1, n, pos, val);}``
+
+提前`return`
 
 ```cpp
 template <class T>
@@ -1837,8 +1880,6 @@ private:
 
 特别的，文艺平衡树具有特别的区间翻转功能，是线段树所不具备的。
 
->- 
-
 ```cpp
 template <class T>
 struct FHQTreap
@@ -1975,6 +2016,200 @@ private:
     }
 };
 
+```
+
+#### 可持久化(维护区间)
+
+```cpp
+template <class T>
+struct PersistentFHQTreap
+{
+public:
+    std::vector<int> roots; // roots[v] 存储第 v 个历史版本的根节点编号
+
+    // 预先开辟足够大的空间 (ICPC 常见操作次数 1e5 ~ 2e5，常数 50，建议开 2e7 左右)
+    PersistentFHQTreap(int max_nodes = 20000000) : idx(0)
+    {
+        tr.resize(max_nodes);
+        roots.push_back(0); // 第 0 个版本为空树
+        // 初始化 0 号节点（空节点）
+        tr[0].size = 0;
+        tr[0].l = tr[0].r = tr[0].tag = 0;
+    }
+
+    // 从数组构建（默认数组下标从 1 开始有效），生成版本 1
+    void build(const std::vector<T> &a)
+    {
+        int rt = 0;
+        for (size_t i = 1; i < a.size(); ++i)
+        {
+            rt = merge(rt, newNode(a[i]));
+        }
+        roots.push_back(rt);
+    }
+
+    // 基于 version 版本，在 pos 后面插入值为 val 的点，返回新版本号
+    int insert(int version, int pos, T val)
+    {
+        int x, y;
+        split(roots[version], pos, x, y);
+        int new_root = merge(merge(x, newNode(val)), y);
+        roots.push_back(new_root);
+        return roots.size() - 1;
+    }
+
+    // 基于 version 版本，删除 pos 位置的点，返回新版本号
+    int del(int version, int pos)
+    {
+        int x, y, z;
+        split(roots[version], pos, x, z);
+        split(x, pos - 1, x, y);
+        int new_root = merge(x, z);
+        roots.push_back(new_root);
+        return roots.size() - 1;
+    }
+
+    // 基于 version 版本，翻转区间 [l, r]，返回新版本号
+    int reverse(int version, int l, int r)
+    {
+        int x, y, z;
+        split(roots[version], r, x, z);
+        split(x, l - 1, x, y);
+        
+        y = cloneNode(y); // 在修改 tag 前必须克隆，避免污染历史
+        tr[y].tag ^= 1;
+        
+        int new_root = merge(merge(x, y), z);
+        roots.push_back(new_root);
+        return roots.size() - 1;
+    }
+
+    // 基于 version 版本，单点查询
+    T SingleQuery(int version, int pos)
+    {
+        int x, y, z;
+        split(roots[version], pos, x, y);
+        split(x, pos - 1, x, z);
+        T res = tr[z].val;
+        // 查询不需要保存新版本，但 split 会消耗少量常数内存
+        return res;
+    }
+
+    // 基于 version 版本，区间查询
+    T RangeQuery(int version, int l, int r)
+    {
+        int x, y, z;
+        split(roots[version], r, x, y);
+        split(x, l - 1, x, z);
+        T res = tr[z].sum;
+        // 查询不需要保存新版本
+        return res;
+    }
+
+private:
+    struct Node
+    {
+        int l, r, size, tag;
+        unsigned int key;
+        T val, sum;
+    };
+    std::vector<Node> tr;
+    int idx;
+    
+    std::mt19937 rng{std::random_device{}()}; 
+
+    int newNode(T val)
+    {
+        int u = ++idx;
+        tr[u].val = val;
+        tr[u].key = rng();
+        tr[u].size = 1;
+        tr[u].sum = val;
+        tr[u].l = tr[u].r = tr[u].tag = 0;
+        return u;
+    }
+
+    // 可持久化核心逻辑：克隆节点
+    int cloneNode(int u)
+    {
+        if (!u) return 0;
+        int v = ++idx;
+        tr[v] = tr[u];
+        return v;
+    }
+
+    void pushup(int u)
+    {
+        tr[u].size = tr[tr[u].l].size + tr[tr[u].r].size + 1;
+        // 注意加上左右儿子的 sum，若为 0 节点其 sum 会默认取 T()（保证 0 节点 sum 清零）
+        tr[u].sum = tr[u].val;
+        if (tr[u].l) tr[u].sum += tr[tr[u].l].sum;
+        if (tr[u].r) tr[u].sum += tr[tr[u].r].sum;
+    }
+
+    void pushdown(int u)
+    {
+        if (tr[u].tag && u)
+        {
+            // 极其重要：在下传标记修改左右儿子前，必须克隆左右儿子！
+            if (tr[u].l) tr[u].l = cloneNode(tr[u].l);
+            if (tr[u].r) tr[u].r = cloneNode(tr[u].r);
+
+            std::swap(tr[u].l, tr[u].r);
+            if (tr[u].l) tr[tr[u].l].tag ^= 1;
+            if (tr[u].r) tr[tr[u].r].tag ^= 1;
+            
+            tr[u].tag = 0;
+        }
+    }
+
+    // 按 Size 裂变 (用于维护序列)
+    void split(int u, int rank, int &x, int &y)
+    {
+        if (!u)
+        {
+            x = y = 0;
+            return;
+        }
+        u = cloneNode(u); // 递归向下前先克隆当前节点
+        pushdown(u);      // 克隆之后再 pushdown，绝对安全
+        
+        if (rank > tr[tr[u].l].size)
+        {
+            rank -= tr[tr[u].l].size + 1;
+            x = u;
+            split(tr[u].r, rank, tr[u].r, y);
+        }
+        else
+        {
+            y = u;
+            split(tr[u].l, rank, x, tr[u].l);
+        }
+        pushup(u);
+    }
+
+    int merge(int x, int y)
+    {
+        if (!x || !y) return x + y;
+        
+        if (tr[x].key < tr[y].key)
+        {
+            x = cloneNode(x); // 先克隆
+            pushdown(x);      // 后 pushdown
+            tr[x].r = merge(tr[x].r, y);
+            pushup(x);
+            return x;
+        }
+        else
+        {
+            y = cloneNode(y); // 先克隆
+            pushdown(y);      // 后 pushdown
+            tr[y].l = merge(x, tr[y].l);
+            pushup(y);
+            return y;
+        }
+    }
+};
 ```
 
 #### 权值唯一，维护权值对应位置
@@ -2132,8 +2367,6 @@ private:
 #### 维护哈希
 
 由于线段树维护哈希功能存在一定的局限性，因为不支持插入与删除，所以我们也可以考虑平衡树维护。其维护的哈希函数方法和线段树完全一致，但和常规的字符串哈希不同，具体可以看线段树维护哈希的介绍，需要尤为注意。
-
-
 
 
 
@@ -2388,6 +2621,10 @@ public:
 
 在维护历史版本的主席树中，我们可以支持在新开版本时实现区间加，使用标记永久化的技巧即可。
 
+Notice:如果要原版本修改要insert(ver[i],ver[i])，也要新建一链，不能原地修改！！不然会改变其他版本
+
+capacity开小了会RE,开大了会MLE,根据"杂项-内存计算"里，自己算一下
+
 ```cpp
 template <class T>
 class PresidentTree
@@ -2395,8 +2632,8 @@ class PresidentTree
 public:
     // 构造函数：使用给定数组a初始化主席树，capacity指定预分配空间大小
     PresidentTree(const std::vector<int> &a, int capacity)
-        : n(a.size()),      // 数组长度
-          root(n),          // 各版本根节点数组
+        : n(a.size()-1),      // 数组长度
+          root(capacity + 1), // 各版本根节点数组
           lc(capacity + 1), // 左子节点数组（+1防止越界）
           rc(capacity + 1), // 右子节点数组
           sum(capacity + 1) // 节点和数组
@@ -2410,14 +2647,16 @@ public:
                 sum[u] = a[l]; // 存储数组值
                 return;
             }
-            int mid = l + r >> 1;     // 计算中点
+            int mid = (l + r) >> 1;     // 计算中点
             build(lc[u], l, mid);     // 递归构建左子树
             build(rc[u], mid + 1, r); // 递归构建右子树
             pushup(u);                // 合并子节点信息
         };
-        build(root[0], 1, n - 1); // 构建初始版本（版本0），基于数组索引
+        build(root[0], 1, n); // 构建初始版本（版本0），基于数组索引
     }
-
+	void insert(int u,int v,int pos,int x){
+        insertNewVersion(root[u],root[v],1,n, pos,x);
+    }
 private:
     int idx = 0;           // 节点计数器，从1开始分配
     int n;                 // 数组长度
@@ -2448,7 +2687,7 @@ private:
             return;
         }
 
-        int mid = l + r >> 1; // 计算中点
+        int mid = (l + r) >> 1; // 计算中点
         if (pos <= mid)       // 目标在左子树
         {
             // 递归处理左子树，创建新路径
@@ -2654,7 +2893,7 @@ struct PerTrie {
             p = t[p].son[q], y = t[y].son[q];
             while (p >= cnt.size()) cnt.emplace_back(); 
             cnt[p] = cnt[y] + 1;
-        } 
+        }
     }
     // 求x与区间[l+1,r]中某个元素xor的最大值
     // l,r注意要传入对应的根节点，即tr.version[l],tr.version[r]
@@ -3448,9 +3687,73 @@ public:
 
 ## 根号算法
 
+### 分块
+
+我们把一个序列分成若干个块，我们记块长为$B$，序列长度为$N$,那么共有$N/B$个块，我们考虑对一个区间$[l,r]$操作，我们考虑线段树的懒标记思想，我们对完整的块打标记，对不完整的块暴力操作。那么复杂度为块数+块长，即$N/B+B$，当$B=sqrt(N)$时最小。
+
+特别的，我们有时候取一个固定的块长$B$往往有更小的常数，视题目而定。
+
+分块可以对区间进行，也可以在值域上进行，分为序列分块和值域分块。
+
+```cpp
+template <class T>
+class Block
+{
+public:
+    Block(int _n) : n(_n), belong(_n + 1), val(_n + 1, 0)
+    {
+        blockSize = sqrt(2 * n);
+        blockNum = n / blockSize + (bool)(n % blockSize);
+        L.resize(blockNum + 1);
+        R.resize(blockNum + 1);
+        lazy.resize(blockNum + 1, 0);
+        sum.resize(blockNum + 1, 0);
+        for (int i = 1; i <= n; ++i)
+        {
+            belong[i] = (i - 1) / blockSize + 1;
+        }
+        for (int i = 1; i <= blockNum; ++i)
+        {
+            L[i] = (i - 1) * blockSize + 1;
+            R[i] = i * blockSize;
+        }
+        R[blockNum] = n;
+    }
+
+    void singleModify(int pos, T newVal)
+    {
+    }
+    void rangeModify(int l, int r)
+    {
+    }
+    int rangeQuery(int l, int r)
+    {
+    }
+
+private:
+    int n, blockSize, blockNum;    // 序列长度，块长，块数
+    std::vector<int> belong, L, R; // 块编号，左端点，右端点
+    std::vector<T> val, lazy, sum;
+};
+```
+
+### 分块高级技巧
+
+值域分块
+
+用于解决一些和值域相关的查询问题，比如查询mex，可以在O(sqrt(V))的时间内配合莫队做到
+
+定期重构
+
+有两种作用
+
+第一是解决无法维护信息，我们可以不对修改操作进行实际上的更改而是先存下来修改，我们不妨设当前存下的修改数量是$B$，那么我们每次询问需要遍历这$B$个修改来求答案，但当$B$很大时我们不可接受，于是在$B = sqrt(n)$时我们考虑直接把这些修改一起重构到整个数组上(如果可以O(n)解决所有修改)，那么我们的复杂度是$qB+qn/B$
+
+第二是维护分块平衡，在分块中我们可能面临插入或者删除操作，当这样的操作过多时块的大小不再平衡，最坏情况下块会变成$B+q$，我们考虑每$q$次修改就重新构建整个分块
+
 ### 莫队
 
-莫队是针对形如$Q$次询问，每次给定$L,R$询问区间信息的暴力算法，其思想一定程度上基于分块，通过把序列分块的方式，我们离线所有询问，询问区间$[L,R]$按左端点所在块编号为第一关键字，右端点为第二关键字排序，然后操控指针移动暴力求解。可以证明在这样的操作顺序下，指针移动次数是$n *sqrt(n) $数量级的,所以复杂度也为$O(n*sqrt(n))$ 
+莫队是针对形如$Q$次询问，每次给定$L,R$询问区间信息的暴力算法，其思想一定程度上基于分块，通过把序列分块的方式，我们离线所有询问，询问区间$[L,R]$按左端点所在块编号为第一关键字，右端点为第二关键字排序，然后操控指针移动暴力求解。可以证明在这样的操作顺序下，指针移动次数是 $n*sqrt(n)$ 数量级的,所以复杂度也为$O(n*sqrt(n))$ 
 
 #### 普通莫队
 
@@ -3460,14 +3763,10 @@ struct Query
     int l, r, id;
 };
 template <class T>
-class RollbackMoTeam
+class MoTeam
 {
 public:
-    RollbackMoTeam(std::vector<T> &a) : n(a.size() - 1), B(sqrt(2 * n)), val(a)
-    {
-        blockNum = n / B + bool(n % B);
-        res = last = 0;
-    }
+    MoTeam(std::vector<T> &a) : n(a.size() - 1), B(sqrt(2 * n)), val(a) {}
 
     int be(int x)
     {
@@ -3477,19 +3776,10 @@ public:
     {
         Q.push_back(Query{l, r, id});
     }
-    void add(T x) // add和del只要一个
+    void add(T x)
     {
     }
-    // void del(T x)
-    // {
-    //}
-
-    void clear()
-    {
-        res = last = 0;
-        // 这里要清空之前的所有信息
-    }
-    T calc(int l, int r)
+    void del(T x)
     {
     }
 
@@ -3497,50 +3787,27 @@ public:
     {
         std::sort(begin(Q), end(Q), [&](const auto &s, const auto &t)
                   { return be(s.l) == be(t.l) ? s.r < t.r : s.l < t.l; });
-
-        int idx = 0;
-        for (int i = 1; i <= blockNum; ++i) // 对每个块单独考虑
+        int pl = 1, pr = 0;
+        for (const auto &[l, r, id] : Q)
         {
-            clear();
-            int R = std::min(B * i, n);
-            int pl = R + 1, pr = R;
-            for (; be(Q[idx].l) == i; ++idx)
-            {
-                auto [l, r, id] = Q[idx];
-                if (r - l + 1 <= B)
-                {
-                    ans[id] = calc(l, r);
-                }
-                else
-                {
-                    while (pr < r)
-                    {
-                        add(val[++pr]); // 右扩展
-                    }
-                    last = res; // 结果存为last
-                    while (pl > l)
-                    {
-                        add(val[--pl]); // 左扩展
-                    }
-                    ans[id] = res; // 结果存入答案
-                    while (l <= R)
-                    {
-                        // 清空信息 add加了什么就清空什么
-                        l++;
-                    }
-                    res = last; // 回滚结果
-                }
-            }
+            while (pl < l)
+                del(val[pl++]);
+            while (pl > l)
+                add(val[--pl]);
+            while (pr < r)
+                add(val[++pr]);
+            while (pr > r)
+                del(val[pr--]);
+            // ans[id] = ;
         }
         return ans;
     }
 
 private:
-    int n, B, blockNum;
+    int n, B;
     std::vector<T> val;
     std::vector<T> ans;
     std::vector<Query> Q;
-    T res, last;
 };
 ```
 
@@ -3551,6 +3818,10 @@ private:
 - **右扩展（`pr`）：** 是永久的，直到当前块结束。
 
 - **左扩展（`pl`）：** 是临时的，处理完一个询问就要撤回。
+
+回滚莫队是处理一类特殊的问题，问题的信息只满足可加性或者可减性，也就是我们只能$O(1)$维护加数字或者减数字，那么我们可以采用回滚莫队。我们以只加不减回滚莫队为例，回滚莫队的思想是，对于左右端点都处在一个块内的询问，我们单独处理，暴力求解，否则我们挨个块考虑，由于我们的右端点从小到大排序，所以让其不断右移即可，对于左端点，我们不具有大小关系，我们可以记录左指针移动之前的答案，在移动完左指针求解答案之后，我们把答案重新置为记录的答案，相当于回滚了答案，处理了不能减的弊端。但需要注意回滚时需要清除左边的信息,复杂度$O(n*sqrt(n))$
+
+其中只加不减的经典问题为区间众数，只减不加的经典问题是区间$mex$ 后者在询问时可以用值域分块维护。
 
 ```cpp
 struct Query
@@ -3710,7 +3981,7 @@ struct Heap
 template <class T>
 struct Heap
 {
-    std::priority_queue<T> a;
+    std::priority_queue<T> a;// 
     std::priority_queue<T, std::vector<T>, std::greater<T>> b;
 
     void add(T x)
@@ -3860,7 +4131,7 @@ using MaxBinomialHeap = mergeHeap<T, std::less<T>>;
 
 珂朵莉树（ODT）用于维护序列，其核心是一个$Node(l,r,val)$的结构体$set$容器,其中$val$是$mutable$类型使得在$set$中该值可以被修改。那么$set$会自动按照左端点升序排序，每个节点都代表一个区间，该区间内每个位置的值相同，都为对应的$val$。
 
-其核心操作为$split$和$assign$,分裂和覆盖，在数据随机的情况下$assign$可以保证区间数量不会很多进而保证复杂度。
+其核心操作为$split$和$assign$,分裂和覆盖，在数据随机的情况下$assign$可以保证区间数量不会很多进而保证复杂度O((n+q)logn)。
 
 ```cpp
 template <class T>

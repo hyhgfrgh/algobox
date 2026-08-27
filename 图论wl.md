@@ -3070,6 +3070,7 @@ public:
     // 原始图的属性
     std::vector<int> dfn;  // 访问时间戳（DFS序）
     std::vector<int> low;   // 通过回边能到达的最小dfn值
+    // low[x] 表示从 x 节点及其子树出发，经过任意条树边和至多一条返祖边所能到达的最小时间戳（dfn）。
     std::vector<int> bel;   // 每个节点所属的边双连通分量编号
     std::vector<std::vector<int>> ebcc; // 存储每个边双连通分量的节点列表
     // 缩点后的图（边双连通分量构成的树/森林）
@@ -4380,6 +4381,8 @@ private:
 值得注意的是，$(a,b,c,d)$和$(a,c,b,d)$可以是两个不同的四元环。
 
 另外，度数相同的结点的排名将不相同，并且需要注意判断$a!=c$
+
+复杂度为$O(msqrt(m))$ 
 
 ```cpp
 class SquareCounter
