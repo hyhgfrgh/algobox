@@ -606,6 +606,178 @@ struct BSGS {
 
 # 多项式
 
+## 拉格朗日插值
+
+$O(n^2)$还原多项式
+
+```cpp
+/**
+ * 拉格朗日插值还原多项式系数
+ * @param pts 给定的 n 个点对 (x_i, y_i)
+ * @param mod 模数（须为质数）
+ * @return 长度为 n 的向量 P，P[k] 代表 x^k 的系数 a_k
+ * 复杂度：时间 O(n^2)，空间 O(n)
+ */
+vector<int> lagrange(const vector<pair<int, int>>& pts) {
+    int n = pts.size();
+    
+    // 1. 计算总乘积多项式 M(x) = (x - x_0)(x - x_1)...(x - x_{n-1})
+    // M 的度数为 n，系数数组大小为 n + 1
+    vector<int> M(n + 1, 0);
+    M[0] = 1;
+    for (int i = 0; i < n; ++i) {
+        int xi = (pts[i].first % mod + mod) % mod;
+        for (int j = i + 1; j >= 1; --j) {
+            M[j] = (M[j - 1] - xi * M[j] % mod + mod) % mod;
+        }
+        M[0] = (-xi * M[0] % mod + mod) % mod;
+    }
+
+    vector<int> P(n, 0); // 最终多项式系数，P[k] 对应 x^k 的系数
+
+    // 2. 对每个点计算基多项式与综合除法
+    for (int i = 0; i < n; ++i) {
+        int xi = (pts[i].first % mod + mod) % mod;
+        int yi = (pts[i].second % mod + mod) % mod;
+
+        // 计算分母 D_i = \prod_{j != i} (x_i - x_j)
+        int D_i = 1;
+        for (int j = 0; j < n; ++j) {
+            if (i == j) continue;
+            int xj = (pts[j].first % mod + mod) % mod;
+            int diff = (xi - xj + mod) % mod;
+            D_i = (D_i * diff) % mod;
+        }
+
+        // 标量系数 C_i = y_i / D_i
+        int Ci = (yi * inv(D_i)) % mod;
+
+        // 综合除法求 M_i(x) = M(x) / (x - x_i)
+        // M_i(x) 的度数为 n-1，从高次项向低次项递推
+        vector<int> Mi(n, 0);
+        Mi[n - 1] = M[n];
+        for (int k = n - 2; k >= 0; --k) {
+            Mi[k] = (M[k + 1] + xi * Mi[k + 1]) % mod;
+        }
+
+        // 累加 C_i * M_i(x) 到总多项式 P(x) 中
+        for (int k = 0; k < n; ++k) {
+            P[k] = (P[k] + Ci * Mi[k]) % mod;
+        }
+    }
+
+    return P;
+}
+```
+
+$O(n^2)$算单点插值，直接用插值公式$$P(k) = \sum_{i=0}^{n-1} y_i \prod_{j \neq i} \frac{k - x_j}{x_i - x_j} \pmod{\text{mod}}$$
+
+```cpp
+/**
+ * O(N^2) 拉格朗日插值计算单点 P(k)
+ * @param points 给定的 n 个点对 (x_i, y_i)
+ * @param k 要求值的点
+ * @return P(k) mod mod
+ */
+int lagrange(const vector<pair<int, int>>& points, int k) {
+    int n = points.size();
+    k = (k % mod + mod) % mod;
+
+    // 特判：若 k 恰好等于某个已知点的 x_i，直接返回对应的 y_i，防止分母为 0
+    for (int i = 0; i < n; ++i) {
+        int xi = (points[i].first % mod + mod) % mod;
+        if (xi == k) {
+            return (points[i].second % mod + mod) % mod;
+        }
+    }
+
+    int ans = 0;
+    for (int i = 0; i < n; ++i) {
+        int xi = (points[i].first % mod + mod) % mod;
+        int yi = (points[i].second % mod + mod) % mod;
+
+        int num = 1; // 分子 \prod_{j != i} (k - x_j)
+        int den = 1; // 分母 \prod_{j != i} (x_i - x_j)
+
+        for (int j = 0; j < n; ++j) {
+            if (i == j) continue;
+            int xj = (points[j].first % mod + mod) % mod;
+
+            num = num * (k - xj + mod) % mod;
+            den = den * (xi - xj + mod) % mod;
+        }
+
+        // term = y_i * (num / den)
+        int term = yi * num % mod * inv(den) % mod;
+        ans = (ans + term) % mod;
+    }
+
+    return ans;
+}
+```
+
+$O(n)$计算快速单点插值（前提是给定点值的横坐标是连续数点）
+
+传入的 $f$ 数组为1-base,有效的值是 f[1]到f[k],分别对应1~k的横坐标
+
+```cpp
+// 拉格朗日插值函数：通过已知的k个点值，计算多项式在n处的值
+// 参数：
+//   f: 向量，存储多项式在x=1,2,...,k处的函数值（f[1]到f[k]）
+//   k: 已知点的数量（多项式次数m = k-1）
+//   n: 要求解的x值
+// 返回值：多项式在x=n处的值f(n)
+int lagrange(std::vector<int> f, int k, int n)
+{
+    int res = 0; // 存储最终结果
+
+    // 预处理前缀积和后缀积
+    int pre[k + 2], suf[k + 2]; // pre[i] = (n-1)(n-2)...(n-i), suf[i] = (n-i)(n-(i+1))...(n-k)
+    pre[0] = 1;                 // 前缀积初始化
+    suf[k + 1] = 1;             // 后缀积初始化
+
+    // 计算前缀积：pre[i] = Π_{j=1}^i (n-j)
+    for (int i = 1; i <= k; ++i)
+    {
+        pre[i] = 1ll * pre[i - 1] * (n - i) % p; // 递推计算前缀积
+    }
+
+    // 计算后缀积：suf[i] = Π_{j=i}^k (n-j)
+    for (int i = k; i >= 1; --i)
+    {
+        suf[i] = 1ll * suf[i + 1] * (n - i) % p; // 递推计算后缀积
+    }
+
+    // 组合所有部分计算拉格朗日插值结果
+    for (int i = 1; i <= k; ++i)
+    {
+        // 计算拉格朗日基函数L_i(n)的分子部分：pre[i-1] * suf[i+1]
+        // 即 Π_{j≠i} (n-j) = (n-1)(n-2)...(n-(i-1)) * (n-(i+1))...(n-k)
+        int numerator = 1ll * pre[i - 1] * suf[i + 1] % p;
+
+        // 计算拉格朗日基函数的分母部分：fac[i-1] * fac[k-i] * (-1)^{k-i}
+        // 其中fac[i]是i的阶乘，inv()是模逆元函数
+        int denominator = 1ll * inv(fac[i - 1]) * inv(fac[k - i]) % p;
+
+        // 根据(k-i)的奇偶性决定符号
+        if ((k - i) & 1)
+        {
+            // 当(k-i)为奇数时，符号为负
+            res = (res - 1ll * f[i] * numerator % p * denominator % p + p) % p;
+        }
+        else
+        {
+            // 当(k-i)为偶数时，符号为正
+            res = (res + 1ll * f[i] * numerator % p * denominator % p + p) % p;
+        }
+    }
+
+    return res; // 返回插值结果f(n)
+}
+```
+
+
+
 ## 原根表
 
 ```cpp
@@ -995,6 +1167,61 @@ public:
 template <class T, T P>
 std::vector<T> Polynomial<T, P>::w;
 using Poly = Polynomial<int, 998244353>;
+```
+
+## 分治NTT
+
+给定一个序列$g_1,g_2...g_{n-1}$ 求序列$f_0,f_1....f_{n-1}$ 其中$f_i = \sum^i_{j=1}f_{i-j}*g_j$  我们将给定边界$f_0$
+
+我们不妨设 ![image](https://cdn.nlark.com/yuque/__latex/d3adf61210218504ac0ef84f3d790676.svg) 设![image](https://cdn.nlark.com/yuque/__latex/f4923a5e0397f264809c46298db38b5b.svg)
+
+那么![image](https://cdn.nlark.com/yuque/__latex/05f010ae3720b3787a74a1aee2421845.svg) 
+
+因此 ![image](https://cdn.nlark.com/yuque/__latex/3f6d3fe2bce7a8fe3296720214170f7f.svg) 需要注意的是把$G(x)$的每一项变成$P-G(x)$,就是摸P意义下
+
+## Chirp-Z-Transform
+
+假设我们有多项式![image](https://cdn.nlark.com/yuque/__latex/3dc3d14e36c97d92103823c542d83873.svg)，我们有常数![image](https://cdn.nlark.com/yuque/__latex/b891664b42113aee13f0bac25eb998e5.svg)和![image](https://cdn.nlark.com/yuque/__latex/4760e2f007e23d820825ba241c47ce3b.svg)，我们希望求出
+
+![image](https://cdn.nlark.com/yuque/__latex/b9a3c0176f715d56c2a4e2ffc36d493b.svg)，暴力复杂度为![image](https://cdn.nlark.com/yuque/__latex/023710761254052f2b1fdef291bd2c43.svg),我们不妨设![image](https://cdn.nlark.com/yuque/__latex/f509bc472ae3fa67f17e4f4f0184f963.svg)
+
+代入可知![image](https://cdn.nlark.com/yuque/__latex/f35ab362f5bc94943d589eedf4669b0c.svg),我们知道![image](https://cdn.nlark.com/yuque/__latex/1c5c8e124f1ccdcbc0354fe8f6b12121.svg)
+
+化简以后可以定义![image](https://cdn.nlark.com/yuque/__latex/15f16098b563818222951fdfd3f8a9d0.svg)，![image](https://cdn.nlark.com/yuque/__latex/a9db66eb082be6fd76f8e251c3a07cb8.svg)
+
+注意![image](https://cdn.nlark.com/yuque/__latex/558270b7f0a90c3c286b860273d106a0.svg)数组大小为![image](https://cdn.nlark.com/yuque/__latex/e04efa7c82e19cb4e2fc5922e3a477ff.svg)
+
+我们有![image](https://cdn.nlark.com/yuque/__latex/690694f58edf3c6973c51dd1cd6d145d.svg)
+
+也就是![image](https://cdn.nlark.com/yuque/__latex/ac7bc9d89e7e62cb4c50e7fcd938de3e.svg)
+
+```cpp
+    ll n, c, m;
+    std::cin >> n >> c >> m;
+    Poly a(n);
+    for (auto &x : a)
+    {
+        std::cin >> x;
+    }
+    Poly s(n), t(n + m - 1);
+    auto calc = [&](ll x) -> ll
+    {
+        return 1ll * x * (x - 1) / 2;
+    };
+    for (int i = 0; i < n; ++i)
+    {
+        s[i] = 1ll * a[n - 1 - i] * inv(qmi(c, calc(n - i - 1))) % P;
+    }
+    for (int i = 0; i < n + m - 1; ++i)
+    {
+        t[i] = qmi(c, calc(i));
+    }
+    s = s * t;
+    for (int i = 0; i < m; ++i)
+    {
+        int ans = 1ll * inv(qmi(c, calc(i))) * s[n + i - 1] % P;
+        std::cout << ans << " \n"[i + 1 == m];
+    }
 ```
 
 # xxx
