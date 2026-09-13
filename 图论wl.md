@@ -2915,37 +2915,60 @@ public:
 
 #### 广义圆方树
 
+额外维护了每个边属于哪个点双联通分量，在每个点双中遍历时维护新的子图，避免遍历一个点所有邻边可能导致的O(n^2)
+
 ```cpp
 class ExRSTree
 {
-    const std::vector<std::vector<int>> &adj; // 原始图的邻接表
+    // 使用 pair 存储 {目标节点 v, 边的唯一编号 id}
+    const std::vector<std::vector<std::pair<int, int>>> &adj; 
     int cur = 0;                              // DFS时间戳计数器
-    std::vector<int> stk;                     // 用于Tarjan算法的栈
-    int tt = 0;                               // 栈顶指针
+    
+    std::vector<int> stk;                     // 用于维护点的栈
+    int tt = 0;                               // 点栈顶指针
+    
+    std::vector<int> edge_stk;                // 修改2：用于维护边的栈
+    int edge_tt = 0;                          // 边栈顶指针
+
     // 在圆方树中添加边的辅助函数
-    void add(int u, int v){
+    void add(int u, int v)
+    {
         tree[u].push_back(v);
         tree[v].push_back(u);
     }
-    // Tarjan算法实现，用于构建圆方树
+
+    // Tarjan算法实现，用于构建圆方树及边所属关系
     // x: 当前遍历的顶点
     // root: 当前连通分量的根节点
-    void dfs(int x, int root){
+    // fa_edge: 父边的编号，防止通过无向边走回头路
+    void dfs(int x, int root, int fa_edge = -1)
+    {
         dfn[x] = low[x] = cur++; // 初始化发现时间和low值
         stk[++tt] = x;           // 将当前节点压栈
+
         int sonNum = 0; // DFS树中子节点计数
-        for (int y : adj[x]) // 遍历所有邻接节点
+
+        for (auto edge : adj[x]) // 遍历所有邻接边
         {
+            int y = edge.first;
+            int id = edge.second;
+
             if (dfn[y] == -1) // 未访问过的节点
             {
                 sonNum += 1;
-                dfs(y, root);
+                edge_stk[++edge_tt] = id; // 【边入栈】将树边压栈
+                
+                dfs(y, root, id);
                 low[x] = std::min(low[x], low[y]); // 更新low值
-                // 发现割点条件
-                if (low[y] >= dfn[x]){
+
+                // 发现割点条件 (即找到了一个新的点双连通分量)
+                if (low[y] >= dfn[x])
+                {
                     ++cnt; // 新增一个方点
-                    // 弹出栈中元素直到遇到y，构建点双连通分量
-                    while (stk[tt] != y){
+
+                    // 1. 弹出点栈中元素，构建圆方树的点关系
+                    while (stk[tt] != y)
+                    {
                         Size[cnt]++;         // 更新点双大小
                         add(cnt, stk[tt--]); // 将圆点连接到方点
                     }
@@ -2953,23 +2976,36 @@ class ExRSTree
                     add(cnt, stk[tt--]); // 连接y到方点
                     add(cnt, x);         // 连接当前割点到方点
                     Size[cnt] += 2;      // 更新点双大小（加上x和y）
+
+                    // 2. 弹出边栈中元素，记录边所属的点双（方点编号）
+                    while (true)
+                    {
+                        int cur_edge = edge_stk[edge_tt--];
+                        edge_bel[cur_edge] = cnt; // 记录当前边属于新增的方点 cnt
+                        if (cur_edge == id) break; // 直到弹出引发当前点双的树边为止
+                    }
                 }
-            } else{
-                low[x] = std::min(low[x], dfn[y]); // 遇到已访问节点，更新low值
+            }
+            else if (id != fa_edge && dfn[y] < dfn[x])
+            {
+                // 遇到返祖边，同样属于某个点双，需要将其压入边栈
+                // dfn[y] < dfn[x] 保证只压入指向祖先的返祖边，避免重复压栈
+                edge_stk[++edge_tt] = id;
+                low[x] = std::min(low[x], dfn[y]); // 更新low值
             }
         }
     }
+
     // 第二次DFS，计算子树大小和所属根节点
-    // u: 当前节点
-    // fa: 父节点
-    // r: 所属连通分量的根节点
     void dfs1(int u, int fa, int r)
     {
         if (u <= n) // 如果是圆点（原始节点）
         {
             siz[u] = 1; // 初始化大小为1
         }
+
         bel[u] = r; // 记录所属根节点
+
         for (auto v : tree[u]) // 遍历圆方树中的邻接节点
         {
             if (v != fa) // 避免回溯父节点
@@ -2979,9 +3015,11 @@ class ExRSTree
             }
         }
     }
+
 public:
     // original graph
     int n;                              // 原始图的顶点数
+    int m;                              // 原始图的边数
     int cnt;                            // 圆方树中的节点计数器（圆点+方点）
     std::vector<int> dfn, low;          // Tarjan算法用的发现时间和low值
     std::vector<std::vector<int>> tree; // 圆方树
@@ -2989,21 +3027,28 @@ public:
     std::vector<int> root;              // 所有圆方树的根节点
     std::vector<int> bel;               // 节点所属的圆方树根节点
     std::vector<int> siz;               // 子树大小
-                                        // 在圆方树中，一个圆点的割度为度数-1
     std::vector<int> Size;              // 点双连通分量的大小
+
+    std::vector<int> edge_bel;          // 【新增】edge_bel[id] 表示编号为 id 的边所属的方点（点双）编号
+
     // 构造函数：从原始图构建圆方树
-    ExRSTree(const std::vector<std::vector<int>> &adj)
+    // 参数 m 为边的总数量，用于初始化边的 belong 数组
+    ExRSTree(const std::vector<std::vector<std::pair<int, int>>> &adj, int m)
         : adj(adj),
           n(adj.size() - 1), // 假设顶点编号从1开始
+          m(m),
           dfn(n + 1, -1),    // 初始化dfn数组
           low(n + 1),        // 初始化low数组
           tree(2 * n + 1),   // 圆方树最多有2n个节点（n圆点+n方点）
           bel(2 * n + 1),    // 所属根节点数组
-          siz(2 * n + 1)     // 子树大小数组
+          siz(2 * n + 1),    // 子树大小数组
+          edge_bel(m+1)        // 边所属点双数组，假设边编号为 0 ~ m-1
     {
         Size.assign(2 * n + 1, 0); // 初始化点双大小数组
-        stk.assign(n + 1, 0);      // 初始化Tarjan栈
+        stk.assign(n + 1, 0);      // 初始化Tarjan点栈
+        edge_stk.assign(m + 1, 0); // 初始化Tarjan边栈
         cnt = n;                   // 方点从n+1开始编号
+
         // 遍历所有顶点构建圆方树
         for (int i = 1; i <= n; i++)
         {
