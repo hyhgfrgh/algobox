@@ -21,7 +21,18 @@
 | `long double` | 通常 16 B    | $1.68*10^7$     |
 | 指针          | 8 B（64 位） | $3.36*10^7$     |
 
+## 正负数除法上下取整
 
+```cpp
+int Ceil(int fz,int fm){
+    if(fm<0) fm *= -1,fz *= -1;
+    return fz>=0?(fz+fm-1)/fm:fz/fm;
+}
+int Floor(int fz,int fm){
+    if(fm<0) fm *= -1,fz *= -1;
+    return fz>=0?fz/fm:(fz-fm+1)/fm;
+}
+```
 
 ## 对拍
 

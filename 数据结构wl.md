@@ -911,7 +911,7 @@ public:
             {
                 return;
             }
-            int mid = l + r >> 1;
+            int mid = (l + r) >> 1;
             build(lc, l, mid);
             build(rc, mid + 1, r);
             pushup(u);
@@ -942,7 +942,7 @@ private:
             {
                 return l;
             }
-            int mid = l + r >> 1;
+            int mid = (l + r) >> 1;
             if (tr[lc].max >= d)
             {
                 return queryLeftFirstlower(lc, l, mid, x, mid, d);
@@ -954,7 +954,7 @@ private:
         }
         else
         {
-            int mid = l + r >> 1;
+            int mid = (l + r) >> 1;
             if (y <= mid)
             {
                 return queryLeftFirstlower(lc, l, mid, x, y, d);
@@ -979,6 +979,128 @@ private:
     }
 };
 ```
+
+### 维护哈希
+
+线段树维护哈希，可以实现单点修改，区间覆盖，区间查询。
+
+事实上任何具有可合并性的信息都可以利用线段树维护，一个序列的哈希值恰好具有该特点，我们可以轻松用线段树维护,由于哈希的特殊性，我们无法维护区间加，但是可以维护区间覆盖。但是事实上，哈希函数几乎不会存在区间加的要求
+
+特别重要的一点，我们用数据结构维护的哈希方法和常规的字符串哈希方法截然不同，也就是说我们不能直接比较，常规的哈希方法是$H[i] = H[i-1]*Base+a[i]$,而数据结构维护的哈希方法是$H[i] = H[i-1]+a[i]*h[i-1]$,其中$h$是全局的$Base$的次幂数组
+
+两种哈希的不同点在于合并方式不同，因为第一种是越靠前乘的Base次数越多 第二种是越靠后乘的Base次数越多
+
+```cpp
+class SegmentTree
+{
+#define lc u << 1
+#define rc u << 1 | 1
+public:
+    struct Node
+    {
+        int l, r, hashVal, cover;
+    };
+    SegmentTree(const std::vector<int> &a, int Base, int P) : Base(Base), P(P), n(a.size()), tr(4 * n), hash(n), prefixHash(n)
+    {
+        --n;
+        hash[0] = 1;
+        prefixHash[0] = 1;
+        for (int i = 1; i < n; ++i)
+        {
+            hash[i] = 1ll * hash[i - 1] * Base % P;
+            prefixHash[i] = (prefixHash[i - 1] + hash[i]) % P; // 哈希前缀和函数 用于区间覆盖
+        }
+        std::function<void(int, int, int)> build = [&](int u, int l, int r)
+        {
+            tr[u] = {l, r, a[l], 0};
+            if (l == r)
+            {
+                return;
+            }
+            int mid = l + r >> 1;
+            build(lc, l, mid);
+            build(rc, mid + 1, r);
+            pushup(u);
+        };
+        build(1, 1, n);
+    }
+    void rangeCover(int l, int r, int val)
+    {
+        rangeCover(1, 1, n, l, r, val);
+    }
+    int rangeQueryHashVal(int l, int r)
+    {
+        return rangeQueryHashVal(1, 1, n, l, r);
+    }
+
+private:
+    int n;
+    int Base, P;
+    std::vector<Node> tr;
+    std::vector<int> hash, prefixHash;
+
+    void pushup(int u)
+    {
+        tr[u].hashVal = (tr[lc].hashVal + 1ll * tr[rc].hashVal * hash[tr[lc].r - tr[lc].l + 1] % P) % P;
+    }
+    void pushdown(Node &u, int cover)
+    {
+        u.hashVal = 1ll * cover * prefixHash[u.r - u.l] % P;
+        u.cover = cover;
+    }
+    void pushdown(int u)
+    {
+        if (tr[u].cover)
+        {
+            pushdown(tr[lc], tr[u].cover);
+            pushdown(tr[rc], tr[u].cover);
+            tr[u].cover = 0;
+        }
+    }
+    void rangeCover(int u, int l, int r, int x, int y, int c)
+    {
+        if (x <= l and y >= r)
+        {
+            pushdown(tr[u], c);
+            return;
+        }
+        int mid = l + r >> 1;
+        pushdown(u);
+        if (x <= mid)
+        {
+            rangeCover(lc, l, mid, x, y, c);
+        }
+        if (y > mid)
+        {
+            rangeCover(rc, mid + 1, r, x, y, c);
+        }
+        pushup(u);
+    }
+    int rangeQueryHashVal(int u, int l, int r, int x, int y)
+    {
+        if (x <= l && y >= r)
+        {
+            return tr[u].hashVal;
+        }
+        int mid = l + r >> 1;
+        pushdown(u);
+        if (y <= mid)
+        {
+            return rangeQueryHashVal(lc, l, mid, x, y);
+        }
+        else if (x > mid)
+        {
+            return rangeQueryHashVal(rc, mid + 1, r, x, y);
+        }
+        else
+        {
+            return (rangeQueryHashVal(lc, l, mid, x, mid) + 1ll * rangeQueryHashVal(rc, mid + 1, r, mid + 1, y) * hash[mid - x + 1] % P) % P;
+        }
+    }
+};
+```
+
+
 
 \newpage
 
@@ -1528,6 +1650,156 @@ private:
     }
 };
 ```
+
+### 线段树套CHT
+
+```cpp
+#include<bits/stdc++.h>
+using namespace std;
+
+#define int long long
+const int inf = 1e18;
+
+struct Line{
+    int k,b,lst;
+    Line(int k = 0,int b = 0,int lst = -200000):k(k),b(b),lst(lst){}
+    int calcY(int x)  {
+        return k*x+b;
+    }
+};
+// 最小值用上凸包维护
+struct CHT{
+    vector<Line> q;
+    void insert(Line ln){
+        while(q.size() and ln.calcY(q.back().lst)<=q.back().calcY(q.back().lst))
+            q.pop_back();
+        
+        if(q.empty()) q.push_back(ln);
+        else{
+            if(ln.k == q.back().k) return ;
+            int fz = q.back().b-ln.b,fm = ln.k-q.back().k;
+            if(fm<0) fz *= -1,fm *= -1;
+            int x = fz>=0?fz/fm:-(((-fz)+fm-1)/fm);
+            if(ln.calcY(x)>q.back().calcY(x)) x++;
+            ln.lst = x;
+            q.push_back(ln);
+        }
+    }
+    int size(){
+        return q.size();
+    }
+    int query(int p){
+        int l = 0,r = q.size();
+        while(l+1<r){
+            int mid = (l+r)/2;
+            if(q[mid].lst>p) r = mid;
+            else l = mid;
+        }
+        return q[l].calcY(p);
+    }
+};
+class SegmentTree
+{
+#define lc u << 1
+#define rc u << 1 | 1
+public:
+    struct Node
+    {
+        int l, r;
+        CHT cht;
+    };
+    SegmentTree(const std::vector<Line> &a) : n(a.size()),tr(4 * n)
+    {
+        n--;
+        std::function<void(int, int, int)> build = [&](int u, int l, int r)
+        {
+            tr[u] = {l, r};
+            if (l == r)
+            {
+                tr[u].cht.insert(a[l]);
+                return;
+            }
+            int mid = (l + r) >> 1;
+            build(lc, l, mid);
+            build(rc, mid + 1, r);
+            pushup(u);
+        };
+        build(1, 1, n);
+    }
+    int QueryMin(int x,int y,int p){
+        return QueryMin(1,1,n,x,y,p);
+    }
+private:
+    int n;
+    std::vector<Node> tr;
+    void pushup(int u)
+    {
+        int i = 0,j = 0;
+        while(i<tr[lc].cht.size() and j<tr[rc].cht.size()){
+            if(tr[lc].cht.q[i].k>tr[rc].cht.q[j].k) tr[u].cht.insert(tr[lc].cht.q[i++]);
+            else tr[u].cht.insert(tr[rc].cht.q[j++]);
+        }
+        while(i<tr[lc].cht.size()) tr[u].cht.insert(tr[lc].cht.q[i++]);
+        while(j<tr[rc].cht.size()) tr[u].cht.insert(tr[rc].cht.q[j++]);
+    }
+    int QueryMin(int u, int l, int r, int x, int y,int p)
+    {
+        if (x <= l && y >= r)
+        {
+            return tr[u].cht.query(p);
+        }
+        int mid = (l + r) >> 1;
+        int res = inf;
+        if (x <= mid)
+        {
+            res = std::min(res, QueryMin(lc, l, mid, x, y, p));
+        }
+        if (y > mid)
+        {
+            res = std::min(res, QueryMin(rc, mid + 1, r, x, y, p));
+        }
+        return res;
+    }
+};
+
+void init(){}
+#define MultiTest   0
+void solve(){
+    int n;cin>>n;
+    vector<int> a(n+1),pre(n+1);
+    for(int i = 1;i<=n;i++){
+        cin>>a[i];
+        pre[i] = pre[i-1]+a[i];
+    }
+
+    vector<Line> ln(n+1);
+    for(int i = 1;i<=n;i++){
+        ln[i] = {a[i],a[i]*i-pre[i],-200000};
+    }
+    SegmentTree tr(ln);
+    int m;cin>>m;
+    for(int i = 1;i<=m;i++){
+        int x,y;cin>>x>>y;
+        int ans = tr.QueryMin(y-x+1, y, x-y);
+        ans += pre[y];
+        cout<<ans<<"\n";
+    }
+}
+
+signed main(){
+    std::cin.tie(nullptr)->sync_with_stdio(false);
+    init();
+    int T = 1;
+    if(MultiTest)
+        std::cin>>T;
+    while(T--) solve();
+    return 0;
+}
+```
+
+
+
+
 
 \newpage
 

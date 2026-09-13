@@ -3458,6 +3458,114 @@ struct BiGraphColor
 
 对于存在奇环的图，对于树边，如果该边被奇环覆盖的次数等于统计的奇环个数，且该边不被偶环覆盖，那么是合法边。对于非树边，当且仅当只有一个奇环，且该树边构成这个奇环时才合法
 
+### 情况一：`K = 0`
+
+图本身就是二分图： $\boxed{\text{所有边合法}}$
+
+------
+
+### 情况二：`K > 0`
+
+对于**树边** `e`：$\boxed{ odd[e]=K \quad\land\quad even[e]=0 }$才合法。
+
+含义：
+
+- `odd[e]=K`：所有已发现的奇环都经过它
+- `even[e]=0`：不存在通过偶环组合出“绕开它的新奇环”的情况
+
+------
+
+对于**非树边** `e`：$\boxed{ K=1 \quad\land\quad e\text{ 属于这个唯一奇环} }$才合法。
+
+```cpp
+#include <algorithm>
+#include<bits/stdc++.h>
+using namespace std;
+#define int long long
+const int inf = 1e18;
+
+void init(){}
+#define MultiTest   0
+void solve(){
+    int n,m;cin>>n>>m;
+    vector<vector<pair<int,int>>> e(n+1);
+    vector<pair<int,int>> edge;
+    for(int i = 1;i<=m;i++){
+        int u,v;cin>>u>>v;
+        edge.push_back({u,v});
+        e[u].emplace_back(v,i);
+        e[v].emplace_back(u,i);
+    }
+    vector<int> vis(n+1),dfn(n+1),dis(n+1),fa(n+1);
+    vector<int> even(n+1),odd(n+1);
+    int K = 0,idx = 0,oddEdge = -1;
+    auto dfs = [&](auto dfs,int u,int pe)->void{
+        dfn[u] = ++idx;
+        vis[u] = 1;
+
+        // 发现返祖边
+        for(auto [v,id]:e[u]){
+            if(id == pe) continue;
+            if(vis[v] and dfn[v]<dfn[u]){
+                if((dis[u]-dis[v])&1){
+                    even[u]++;
+                    even[v]--;
+                }else{
+                    K++;
+                    odd[u]++;
+                    odd[v]--;
+                    oddEdge = id;
+                }
+            }
+        }
+        for(auto [v,id]:e[u]){
+            if(id == pe || vis[v]) continue;
+            fa[v] = id;
+            dis[v] = dis[u]+1;
+            dfs(dfs,v,id);
+            even[u] += even[v];
+            odd[u] += odd[v];
+        }
+    };
+    for(int i = 1;i<=n;i++){
+        if(!vis[i]) dfs(dfs,i,0);
+    }
+    if(K == 0){
+        cout<<m<<"\n";
+        for(int i = 1;i<=m;i++){
+            cout<<i<<" ";
+        }
+        cout<<"\n";
+        return ;
+    }   
+    vector<int> ans;
+    if(K == 1) ans.push_back(oddEdge);
+    for(int i = 1;i<=n;i++){
+        if(fa[i] != 0 and odd[i] == K and even[i] == 0){
+            ans.push_back(fa[i]);
+        }
+    }
+    cout<<ans.size()<<"\n";
+    sort(ans.begin(),ans.end());
+    for(int x:ans){
+        cout<<x<< " ";
+    }
+    cout<<"\n";
+}
+
+signed main(){
+    std::cin.tie(nullptr)->sync_with_stdio(false);
+    init();
+    int T = 1;
+    if(MultiTest)
+        std::cin>>T;
+    while(T--) solve();
+    return 0;
+}
+```
+
+
+
 \newpage
 
 ## 图匹配
