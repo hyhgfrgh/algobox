@@ -479,6 +479,93 @@ struct SubsequenceAutomaton
 };
 ```
 
+## 回文自动机
+为了分别表示奇回文串和偶回文串，回文自动机是两棵树加$fail$指针的结构。我们不妨设左树维护偶回文串，根节点为$0$，右树维护奇回文串，根节点为$-1$。特别的，的$fail$指针指向$1$
+
+自动机上每个节点都代表一个回文串，如果$i$点代表的串为$S$，那么点$i$经字符$c$的边到达的节点为$cSc$，其中$fail$指向最长的回文后缀。
+
+```cpp
+template <int Z, char Base>
+struct Pam
+{
+    std::vector<std::array<int, Z>> ch;   // 转移数组，存储每个节点的子节点
+    std::vector<int> fail, len, dep, cnt; // fail指针数组，回文长度数组，深度数组，计数器
+    std::string s;                        // 存储添加的字符
+
+    int cur = 0, tot = 1; // 当前节点和总节点数，初始有两个节点：0（偶长度根）和1（奇长度根）
+
+    // 构造函数，初始化数组大小
+    Pam(int n) : ch(n + 2), fail(n + 2), len(n + 2), dep(n + 2), cnt(n + 2)
+    {
+        fail[0] = 1; // 偶长度根的fail指向奇长度根
+        len[1] = -1; // 奇长度根的回文长度为-1，作为特殊标记
+    }
+
+    // 用字符串初始化的构造函数
+    Pam(const std::string &s) : Pam(s.size())
+    {
+        for (int i = 0; i < s.size(); i++)
+        {
+            add(i, s[i]); // 逐个添加字符
+        }
+    }
+
+    // 节点计数函数，可用于统计每个回文子串的出现次数
+    void assign(int cur, int id)
+    {
+        cnt[cur]++;
+    }
+
+    // 获取当前节点的fail指针
+    int getfail(int x, int i)
+    {
+        // 循环找到第一个满足条件的fail节点
+        while (i - len[x] - 1 < 0 or s[i - len[x] - 1] != s[i])
+        {
+            x = fail[x];
+        }
+        return x;
+    }
+
+    // 添加字符到PAM
+    void add(int i, char c)
+    {
+        c -= Base;      // 字符映射到0-Z范围内
+        s.push_back(c); // 添加到字符串
+
+        int v = getfail(cur, i); // 获取当前节点的fail节点
+
+        // 如果该转移不存在，则创建新节点
+        if (!ch[v][c])
+        {
+            fail[++tot] = ch[getfail(fail[v], i)][c]; // 设置新节点的fail指针
+            ch[v][c] = tot;                           // 设置转移
+            len[tot] = len[v] + 2;                    // 新节点的回文长度
+            dep[tot] = dep[fail[tot]] + 1;            // 新节点的深度
+        }
+
+        cur = ch[v][c]; // 更新当前节点
+        assign(cur, i); // 更新计数
+    }
+
+    // 获取fail树的邻接表表示，根节点为1
+    auto getfailTree() const
+    {
+        std::vector e(tot + 1, std::vector<int>());
+        for (int i = 0; i <= tot; i++)
+        {
+            if (i != 1) // 跳过根节点
+            {
+                e[fail[i]].emplace_back(i); // 添加边
+            }
+        }
+        return e;
+    }
+};
+```
+
+
+
 \newpage
 
 ## AC自动机
