@@ -20,14 +20,13 @@ long long qpow(long long a,long long n){
     }
     return res;
 }
-vector<int> f,g;
-void init(int size){
-    f.resize(size+1);g.resize(size+1);
-    f[0] = g[0] = 1;
-    for(int i = 1;i<=size;i++){
-        f[i] = 1LL*f[i-1]*i%mod;
-        g[i] = 1LL*g[i-1]*qpow(i,mod-2)%mod;
-    }
+std::vector<int> f,g;
+void init(int n){
+   f.resize(n+1),g.resize(n+1);
+   f[0] = g[0] = 1;
+   for(int i = 1;i<=n;i++) f[i] = 1LL*f[i-1]*i%mod;
+   g[n] = qpow(f[n],mod-2);
+   for(int i = n-1;i>=1;i--) g[i] = 1LL*(i+1)*g[i+1]%mod;
 }
 long long C(int a,int b){
     if(b>a || b<0) return 0;
