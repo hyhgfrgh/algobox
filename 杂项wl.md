@@ -1,5 +1,50 @@
 # 杂项
 
+## 线下vscode配置
+
+ctrl+ , 打开设置
+
+搜mouse加上鼠标改编辑器和终端字体大小，
+
+搜smooth把所有相关选项都打开(美观)
+
+自动编译运行task,按ctrl+shift+B找到json文件修改
+
+```cpp
+{
+    "label": "C++",
+    "type": "shell",
+    "command": "g++ -std=c++23 -O2 -pipe -static -s \"${file}\" -o exe && ./exe",
+    "options": {
+        "cwd": "${fileDirname}"
+    },
+    "presentation": {
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared"
+    },
+    "problemMatcher": "$gcc"
+}
+```
+
+
+(改ctrl+shift+n的快捷键)
+
+ctrl + shift+p 搜open keyboard shortcuts(JSON)
+
+```json
+[
+    {
+        "key": "Ctrl+Alt+n",
+        "command": "workbench.action.tasks.runTask",
+        "args": "C++"
+    }
+]
+```
+
+
+
+
 ## 一些思路
 
 + 贡献法: 考虑哪些元素会被计入答案
