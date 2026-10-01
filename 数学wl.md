@@ -398,7 +398,7 @@ a^{b(mod \ \phi(m)) + \phi(m)},b\geq \phi(m)
 \end{cases}
 $$
 
-*当gcd(a,m) !=1时，想象一个圈，外面漏了一个尾巴的结构，起初a位置尾巴的位置，而圈表示周期长度是\phi(m) ,从a进入圈需要的步数不超过\phi(m) ,b<\phi(m) 的时候直接快速幂计算，因为终点可能还在尾巴上。否则a最后的位置一定落在圈内，前走\phi(m) 步进入圈，然后走余数步就可以了*
+当gcd(a,m) !=1时，想象一个圈，外面漏了一个尾巴的结构，起初a位置尾巴的位置，而圈表示周期长度是\phi(m) ,从a进入圈需要的步数不超过\phi(m) ,b<\phi(m) 的时候直接快速幂计算，因为终点可能还在尾巴上。否则a最后的位置一定落在圈内，前走\phi(m) 步进入圈，然后走余数步就可以了
 
 ## 威尔逊定理
 
@@ -607,7 +607,7 @@ struct BSGS {
 
 ## 拉格朗日插值
 
-$O(n^2)$还原多项式
+$O(n^2)$还原多项式(解多元方程组用高斯消元)
 
 ```cpp
 /**
@@ -1485,6 +1485,305 @@ Matrix power(Matrix a, i64 b) {
     return ans;
 }
 ```
+
+
+#### 线段树+矩阵修改
+```cpp
+#define int long long
+const int inf = 1e18;
+int mod = 998244353;
+
+int id(int x,int y){
+    return x*4+y;
+}
+using matrix = array<int,16>;
+matrix mul(matrix& s,matrix& t){
+    matrix res{};
+    for(int i = 0;i<4;i++){
+        for(int k = 0;k<4;k++){
+            int tt = s[id(i,k)];
+            if(!tt) continue;
+            for(int j = 0;j<4;j++){
+                res[id(i,j)] = res[id(i,j)]+tt*t[id(k,j)];
+            }
+        }
+    }
+    for(int i = 0;i<16;i++) res[i] %= mod;
+    return res;
+}
+
+matrix A = {{
+    1,0,0,0
+    ,0,1,0,0
+    ,0,0,1,0
+    ,0,0,0,1
+}};
+
+struct info{
+    int a[4];
+    info operator+(info& t){
+        info res = {0,0,0,0};
+        for(int i = 0;i<4;i++){
+            res.a[i] = a[i]+t.a[i];
+            if(res.a[i]>=mod) res.a[i] -= mod;
+        }
+        return res;
+    }
+    void apply(matrix& t){
+        info res = {0,0,0,0};
+        for(int i = 0;i<4;i++){
+            for(int j = 0;j<4;j++){
+                res.a[i] = (res.a[i]+t[id(i,j)]*a[j])%mod;
+            }
+        }
+        *this = res;
+    }
+};
+struct SegmentTree{
+#define lc u<<1
+#define rc u<<1|1
+
+    int n;
+    vector<matrix> Tag;
+    vector<info> Sum;
+    vector<int> bl;
+    SegmentTree(const vector<info> &a):n(a.size()-1),Tag(4*n),Sum(4*n),bl(4*n){
+        Sum[0] = {0,0,0,0};
+
+        function<void(int,int,int)> build = [&](int u,int l,int r){
+            Sum[u] = a[l];Tag[u] = A;bl[u] = 0;
+            if(l == r) return ;
+            int mid = (l+r)/2;
+            build(lc,l,mid);
+            build(rc,mid+1,r);
+            pushup(u);
+        };
+        build(1,1,n);
+    }
+    void pushup(int u){
+        Sum[u] = Sum[lc] + Sum[rc];
+    }
+    void pushdown(int u,matrix& tag){
+        Sum[u].apply(tag);
+        Tag[u] = mul(tag,Tag[u]);
+        bl[u] = 1;
+    }
+    void pushdown(int u){
+        if(bl[u]){
+            pushdown(lc,Tag[u]);
+            pushdown(rc,Tag[u]);
+            Tag[u] = A;
+            bl[u] = 0;
+        }
+    }
+    // info rangeQuery(int l,int r){
+    //     return rangeQuery(1,1,n,l,r);
+    // }
+    info rangeQuery(int u,int l,int r,int x,int y){
+        if(x<=l and y>=r){
+            return Sum[u];
+        }
+        int mid = (l+r)/2;
+        pushdown(u);
+        info res = {0,0,0,0};
+        if(x<=mid) {
+            info tt = rangeQuery(lc,l,mid,x,y);
+            res = res+tt;
+        }
+        if(y>mid) {
+            info tt = rangeQuery(rc,mid+1,r,x,y);
+            res = res+tt;
+        }
+        return res;
+    }
+    // void rangeModify(int l,int r, matrix& tag){
+    //     rangeModify(1,1,n,l,r,tag);  
+    // }
+    void rangeModify(int u,int l,int r,int x,int y, matrix& tag){
+        if(x<=l and y>=r){
+            pushdown(u,tag);
+            return ;
+        }
+        int mid = (l+r)/2;
+        pushdown(u);
+        if(x<=mid) rangeModify(lc,l,mid,x,y,tag);
+        if(y>mid) rangeModify(rc,mid+1,r,x,y,tag);
+        pushup(u);
+    }
+};
+void solve(){
+    int n;cin>>n;
+    vector<info> a(n+1);
+    for(int i = 1;i<=n;i++){
+        for(int j = 0;j<3;j++){
+            cin>>a[i].a[j];
+        }
+        a[i].a[3] = 1;
+    }
+    SegmentTree tr(a);
+    int m;cin>>m;
+    
+    while(m--){
+        int o;cin>>o;
+        int l,r;cin>>l>>r;
+        matrix opt = A;
+        if(o == 7){
+            info res = tr.rangeQuery(1,1,n,l, r);
+            for(int i = 0;i<3;i++){
+                cout<<res.a[i]<<" ";
+            }
+            cout<<"\n";
+        }else{
+            if(o == 1){
+                opt[id(0,1)] = 1;
+            }else if(o == 2){
+                opt[id(1,2)] = 1;
+            }else if(o == 3){
+                opt[id(2,0)] = 1;
+            }else if(o == 4){
+                int v;cin>>v;
+                opt[id(0,3)] = v;
+            }else if(o == 5){
+                int v;cin>>v;
+                opt[id(1,1)] = v;
+            }else if(o == 6){
+                int v;cin>>v;
+                opt[id(2,2)] = 0;
+                opt[id(2,3)] = v;
+            }
+            tr.rangeModify(1,1,n,l, r, opt);
+        }
+    }
+}
+```
+
+
+
+## 线性代数
+
+### part 1 行列式
+
+排列：由$1,2,3... n$ 组成的一个有序数组，叫做一个n级排列。
+
+定义：在一个 n 级排列中$a_1,a_2,...,a_n$中，如果较大的数$a_i$ 排在较小的数 $a_j$ 的前面，则称$a_i$ 与$a_j$ 构成一个逆序。排列中逆序的个数称为它的逆序数，记作$N(a_1,a_2,...,a_n)$
+
+定义：逆序数为奇数的排列称为奇排列，为偶数的排列称为偶排列。
+
+定理：一个排列经过一次对换后，奇偶性改变。
+
+定理：$n$ 级排列共有 n! 个，其中奇排列和偶排列各占一半。
+
+### part 2 矩阵
+
+定义：m * n 个数$a_{ij}(i=1,2,...,m;j=1,2,...,n)$ 的一个m行n列的数表，称为m*n矩阵。
+
+同型矩阵：矩阵A与B是同型矩阵 <=> A与B的行数相等，列数也相等。
+
+方阵：行数等于列数的矩阵。
+
+列矩阵：只有一列的矩阵。
+
+零矩阵：矩阵中的数都为零的矩阵。
+
+负矩阵：将矩阵A的所有元素取相反数后得到的矩阵，叫做A的负矩阵。
+
+上(下)三角形矩阵：主对角线下(上)方的元素全为零的方阵。
+
+对角形矩阵：既是上三角形矩阵，又是下三角形矩阵。
+$$
+注：对角形矩阵
+\begin{pmatrix}
+a_{11} & 0 & 0 \\
+0 & a_{22} & 0 \\
+0 & 0 & a_{33}
+\end{pmatrix}
+，也可记为diag(a1,a2,...,an)
+$$
+单位矩阵：主对角线上的元素全为1，其他位置的元素全为零的方阵。
+
+矩阵加法：两个同型矩阵，对应位置的元素相加。
+
+矩阵减法：两个同型矩阵，对应位置的元素相减。
+
+矩阵加减法的规律与正常数组加减法的规律一样。
+
+矩阵的数乘：数 k 乘以矩阵 A ,就是用数 k 乘以矩阵A的每一个元素。
+
+矩阵转置：将矩阵A的各行依次变为列后得到的矩阵，A的转置矩阵记为$A^T$
+
+> (1) $(A^T)^T = A$
+>
+> (2)$(A+B)^T = A^T+ B^T$ ,$(A-B)^T = A^T - B^T$
+>
+> (3) $(k*A)^T = k*A^T$ 
+>
+> (4)$(AB)^T = B^TA^T ,-> (A_1A_2...A_n)^T=A_n^T...A_2^TA_1^T$
+>
+> (5)$(A^k)^T = (A^T)^k$ 
+
+对称矩阵：所有的$a_{ij}=a_{ji}$ 的方阵
+
+> (1) $A^T=A$ 
+>
+> (2)若A，B为同阶的对称矩阵则A+B，A-B仍为对称矩阵。
+>
+> (3)若A，B为同阶对称矩阵，则AB为对称矩阵的充要条件是AB=BA.
+>
+> (4) 对任意n*m矩阵A,则$A^TA,AA^T$ 均为对称矩阵。
+
+反对称矩阵：主对角线全为0,并且左右$a_{ij}=-a_{ji}$ 的方阵
+
+> A为反对称矩阵则$A^T = -A$
+>
+> (2)若A，B为同阶的反对称矩阵则A+B，A-B仍为反对称矩阵。
+>
+>
+> $$
+> (3) 若A为反对称矩阵，k为正整数，则A^k 为 \left\{ 
+> \begin{array}{l}
+> \text{对称矩阵，k为偶数} \\
+> \text{反对称矩阵，k为偶数}
+> \end{array}
+> \right.
+> $$
+
+伴随矩阵：
+
+> (1) 对于任意方阵A ,有$AA^*=A^*A=|A|E$ 
+>
+> (2) 若A为n阶方阵，则$|A^*|=|A|^{n-1}$ 
+>
+> (3) 若A为方阵，则$(A^T)^*=(A^*)^T$ 
+>
+> (4)若A为n阶方阵，k为常数，则$(kA)^*=k^{n-1}A*$
+
+逆矩阵：设A是n阶方阵，若存在n阶方阵B,使AB=BA=E,则称A的可逆矩阵，B为A的逆矩阵，记作$A^{-1}$ .
+
+若方阵A可逆，则A的逆矩阵是唯一的
+
+若A为n阶方阵，若 $|A| \neq 0$,则称A使非奇异矩阵，否则A是奇异矩阵。
+
+定理：方阵A可逆的充要条件是A为非奇异矩阵，并且当A可逆时,$A^{-1}=\frac{1}{|A|}A^*$ 
+
+> (1) 若A可逆，则$A^T$ 也可逆，且$(A^T)^{-1}=(A^{-1})^T$ 
+>
+> (2) 若A可逆，k为非零常数，则kA也可逆，且$(kA)^{-1} = \frac {1}{k}A^{-1}$
+>
+> (3) 若A可逆，则$A^*$ 也可逆，且$(A^*)^{-1}=(A^{-1})^*=\frac{1}{|A|}A$ 
+>
+> (5)若A可逆，m为正整数，则$A^m$ 也可逆，且$(A^m)^{-1}=(A^{-1})^m$ 
+
+初等行(列)变换
+
+> (1) 交换矩阵的两行(列)
+>
+> (2) 用数$k \neq 0$ 乘矩阵某一行(列)的所有元素
+>
+> (3)把矩阵某一行所有元素的K倍加到另一行(列)对应的元素上去
+
+标准型矩阵：元素只有1和0组成，且矩阵的左上角是一个单位矩阵，其余元素全为零。
+
+
 
 \newpage
 
