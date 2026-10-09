@@ -33,45 +33,38 @@
 在我们求出以任意一点为根的子树大小后，我们从根开始$dfs$。如果某个点的所有儿子的子树大小都$\leq n/2$，那么该点为重心，直接返回。否则我们递归子树大小超过$n/2$的儿子即可（显然只有一个）。
 
 ```cpp
-struct TreeCentroid
-{
+struct Cent{
     int n;
-    std::vector<std::vector<std::pair<int, int>>> g; // 邻接表
-    std::vector<int> siz;                            // 子树大小
-
-    TreeCentroid(int n) : n(n), g(n + 1), siz(n + 1) {}
-
-    void addEdge(int u, int v, int w)
-    {
+    vector<vector<pair<int, int>>> g; // 邻接表
+    vector<int> siz;                  // 子树大小
+    Cent(int n) : n(n), g(n + 1), siz(n + 1) {}
+    void addEdge(int u, int v, int w){
         g[u].emplace_back(v, w);
         g[v].emplace_back(u, w);
     }
-
-    void dfsSize(int u, int fa)
-    {
+    void dfsSize(int u, int fa){
         siz[u] = 1;
-        for (const auto &[v, w] : g[u])
-        {
-            if (v != fa)
-            {
+        for (const auto &[v, w] : g[u]){
+            if (v != fa){
                 dfsSize(v, u);
                 siz[u] += siz[v];
             }
         }
     }
-    int findCentroid(int u)
-    {
+     
+    int findCentroid(int u){
         dfsSize(u, 0);
         return getRoot(u, 0, siz[u]);
     }
 private:
-    int getRoot(int u, int fa, int total_size)
-    {
-        for (const auto &[v, w] : g[u])
-        {
-            if (v != fa && 2 * siz[v] > total_size)
-            {
+    int getRoot(int u, int fa, int total_size){
+        for (const auto &[v, w] : g[u]){
+            if(v == fa) continue;
+            if (2 * siz[v] > total_size){
                 return getRoot(v, u, total_size);
+            }
+            if (2 * siz[v] == total_size){// 返回编号最小的重心
+                return min(u,v);
             }
         }
         return u;
@@ -87,65 +80,55 @@ private:
 
 可直接获取直径长度，其中一条直径上的所有点，以及每个点到父节点直接连边的权值
 
-两次bfs会更改fa[]数组，其中st表示返回路径的起点，en表示终点，d是直径长度
+两次bfs会更改fa[]数组，其中x表示返回路径的起点，y表示终点，d是直径长度
 
 ```cpp
-struct TreeDiameter{
-    int n,d = -1,st = -1,en = -1;
-    std::vector<std::vector<std::pair<int, int>>> g; // 邻接表（无向图）
-    std::vector<pair<int,int>> fa; // [指向的父节点fa,父节点路径的权值w]                            // 父节点记录（用于路径回溯）
-    // 1-base
-    TreeDiameter(vector<vector<pair<int,int>>>& e) {
-        n = e.size()-1;
-        g = e;
-        fa.resize(n+1);
+template <class T>
+struct Diam{
+    int n;
+    vector<vector<pair<int, int>>> g;           // 邻接表（无向图）
+    vector<int> fa;                             // 父节点记录（用于路径回溯）
+    Diam(int n) : n(n), g(n + 1), fa(n + 1) {}
+    void addEdge(int u, int v, int w){
+        g[u].emplace_back(v, w);
+        g[v].emplace_back(u, w);
     }
     // BFS 求最远节点（返回节点编号）
-    std::pair<int, int> bfs(int start)
-    {
-        std::vector<int> dep(n + 1, -1);
-        std::queue<int> q;
+    pair<int, T> bfs(int start){
+        vector<T> dep(n + 1, -1);
+        queue<int> q;
         q.push(start);
         dep[start] = 0;
-        fa[start] = {-1,0};
-        while (!q.empty())
-        {
+        fa[start] = -1;
+        while (!q.empty()){
             int u = q.front();
             q.pop();
-            for (auto [v, w] : g[u])
-            {
-                if (dep[v] == -1)
-                {
+            for (auto [v, w] : g[u]){
+                if (dep[v] == -1){
                     dep[v] = dep[u] + w;
-                    fa[v] = {u,w};
+                    fa[v] = u;
                     q.push(v);
                 }
             }
         }
-        int maxPos = std::max_element(dep.begin(), dep.end()) - dep.begin();
-        return std::make_pair(maxPos, dep[maxPos]);
+        int maxPos = max_element(dep.begin(), dep.end()) - dep.begin();
+        return make_pair(maxPos, dep[maxPos]);
     }
     // 求树的直径（返回直径长度和端点 {u, v}）
-    std::pair<int, std::pair<int, int>> getDiameter()
-    {
-        if(d != -1){
-            return {d,{en,st}};
-        }
-        auto [x, dis1] = bfs(1); // 第一次BFS,此时根变为x
-        auto [y, dis2] = bfs(x); // 第二次BFS，此时根变为y
-        d = dis2,st = y,en = x;
-        return {dis2, {y, x}};
+    pair<T, pair<int, int>> getDiam(){
+        auto [x, dis1] = bfs(1); // 第一次BFS
+        auto [y, dis2] = bfs(x); // 第二次BFS
+        return {dis2, {x, y}};
     }
     // 获取树直径上的所有点first 以及 每个点到父节点路径的权值second
-    std::vector<pair<int,int>> getPathDia(){
-        getDiameter();
-        vector<pair<int,int>> path;
-        int p = st;
-        while(p != en){
-            path.emplace_back(fa[p]);
-            p = fa[p].first;
+    vector<int> getPathDia(){
+        auto [dis,uv] = getDiam();
+        auto [u,v] = uv;
+        vector<int> path(1,v);
+        while(u!=v){
+            v = fa[v];
+            path.push_back(v);
         }
-        path.emplace_back(-1,0);
         return path;
     }
 };
@@ -165,9 +148,7 @@ struct TreeDiameter{
 
 \newpage
 
-## 最近公共祖先lca
-
-### 重链剖分
+## 重链剖分
 
 重链剖分可以将树上的任意一条路径划分成不超过$O(logn)$条连续的链，每条链上的点深度互不相同。同时会给树的点重新编号为 $dfn$序。
 
@@ -191,63 +172,50 @@ $dfn$序的定义:按先遍历重儿子的顺序得到的 $dfs$ 序。
 
 ```cpp
 template <class T>
-class TreePre
-{
-
-private:
-    int n;
-    int idx = 0;
-    int root;
-    std::vector<std::vector<std::pair<int, int>>> &g;
-    void dfs1(int u, int f)
-    {
+struct TreePre{
+    int n,idx = 0,root;
+    vector<vector<pair<int, int>>> &g;
+    void dfs1(int u, int f){
         fa[u] = f;
         siz[u] = 1;
-        for (auto [v, w] : g[u])
-        {
-            if (v != f)
-            {
-                dep[v] = dep[u] + 1;
-                dis[v] = dis[u] + w;
-                dfs1(v, u);
-                siz[u] += siz[v];
-                if (siz[son[u]] < siz[v])
-                {
-                    son[u] = v;
-                }
+        for (auto [v, w] : g[u]){
+            if(v == f) continue;
+            dep[v] = dep[u] + 1;
+            dis[v] = dis[u] + w;
+            dfs1(v, u);
+            siz[u] += siz[v];
+            if (siz[son[u]] < siz[v]){
+                son[u] = v;
             }
         }
     }
-    void dfs2(int u, int tp)
-    {
+    void dfs2(int u, int tp){
         dfn[u] = ++idx;
         idfn[idx] = u;
         top[u] = tp;
-        if (son[u])
-        {
-            dfs2(son[u], tp);
-        }
-        for (auto [v, w] : g[u])
-        {
-            if (v != fa[u] and v != son[u])
-            {
+
+        if (son[u]) dfs2(son[u], tp);
+
+        for (auto [v, w] : g[u]){
+            if (v != fa[u] and v != son[u]){
                 dfs2(v, v);
             }
         }
     }
 
 public:
-    TreePre(std::vector<std::vector<std::pair<int, int>>> &g, int root)
-        : g(g), n(g.size() - 1), root(root), dep(n + 1), top(n + 1), son(n + 1), 
-    	fa(n + 1), siz(n + 1), dfn(n + 1), idfn(n + 1), dis(n + 1)
+    TreePre(vector<vector<pair<int, int>>> &g, int root)
+        : g(g), n(g.size() - 1), root(root), dep(n + 1), 
+        top(n + 1), son(n + 1), fa(n + 1), siz(n + 1), 
+        dfn(n + 1), idfn(n + 1), dis(n + 1)
     {
         dep[root] = 1;
         dis[root] = 0;
         dfs1(root, 0);
         dfs2(root, root);
     }
-    std::vector<int> dfn, idfn, siz, fa, dep, top, son;
-    std::vector<T> dis;
+    vector<int> dfn, idfn, siz, fa, dep, top, son;
+    vector<T> dis;
     int kthAncester(int u, int k) // k级祖先
     {
         if (dep[u] <= k)
@@ -287,19 +255,19 @@ public:
 
     auto getRoad(int u, int v) // 得到uv之间路径的dfn序
     {
-        std::vector<std::pair<int, int>> res;
+        vector<pair<int, int>> res;
         while (top[u] != top[v])
         {
             if (dep[top[u]] < dep[top[v]])
             {
-                std::swap(u, v);
+                swap(u, v);
             }
             res.push_back({dfn[top[u]], dfn[u]});
             u = fa[top[u]];
         }
         if (dep[u] > dep[v])
         {
-            std::swap(u, v);
+            swap(u, v);
         }
         res.push_back({dfn[u], dfn[v]});
         return res;
@@ -311,7 +279,7 @@ public:
         {
             return fa[u];
         }
-        auto it = std::upper_bound(g[u].begin(), g[u].end(), root, [&](int x, int y)
+        auto it = upper_bound(g[u].begin(), g[u].end(), root, [&](int x, int y)
                                    { return dfn[x] < dfn[y]; });
         --it;
         return *it;
@@ -339,7 +307,7 @@ public:
 
 \newpage
 
-### 树链剖分（线段树）
+## 树链剖分（线段树）
 
 配合区间修改线段树修改树上点权，如果修改边权可以让每个点的点权表示这个点指向父节点的边的权，那么让x到y路径的边权区间加可以先addRoad(x,y,v),再addRoad(lca,lca,-v);
 
@@ -456,7 +424,7 @@ public:
 
 \newpage
 
-### 欧拉序+RMQ
+## FastLCA（欧拉序+RMQ)
 
 我们考虑用$dfs$序求两个点的$LCA$
 
@@ -470,34 +438,95 @@ public:
 
 ```cpp
 template <class T>
+struct TreePre{
+    int n,idx = 0,root;
+    vector<vector<pair<int, int>>> &g;
+    void dfs1(int u, int f){
+        fa[u] = f;
+        siz[u] = 1;
+        for (auto [v, w] : g[u]){
+            if(v == f) continue;
+            dep[v] = dep[u] + 1;
+            dis[v] = dis[u] + w;
+            dfs1(v, u);
+            siz[u] += siz[v];
+            if (siz[son[u]] < siz[v]){
+                son[u] = v;
+            }
+        }
+    }
+    void dfs2(int u, int tp){
+        dfn[u] = ++idx;
+        idfn[idx] = u;
+        top[u] = tp;
+
+        if (son[u]) dfs2(son[u], tp);
+
+        for (auto [v, w] : g[u]){
+            if (v != fa[u] and v != son[u]){
+                dfs2(v, v);
+            }
+        }
+    }
+public:
+    TreePre(vector<vector<pair<int, int>>> &g, int root)
+        : g(g), n(g.size() - 1), root(root), dep(n + 1), 
+        top(n + 1), son(n + 1), fa(n + 1), siz(n + 1), 
+        dfn(n + 1), idfn(n + 1), dis(n + 1)
+    {
+        dep[root] = 1;
+        dis[root] = 0;
+        dfs1(root, 0);
+        dfs2(root, root);
+    }
+    vector<int> dfn, idfn, siz, fa, dep, top, son;
+    vector<T> dis;
+};
+//  -----------------
+template <class T>
+class ST{
+    vector<vector<int>> st;
+    vector<T> A;
+public:
+    ST(const vector<T> &a){
+        A = a;
+        int n = a.size() - 1, logn = __lg(n);
+        st.assign(logn + 1, vector<int>(n + 1));
+        for (int i = 1; i <= n; ++i) st[0][i] = i;
+        for (int j = 1; j <= logn; ++j){
+            for (int i = 1; i + (1 << j) - 1 <= n; ++i){
+                st[j][i] = (a[st[j - 1][i]] < a[st[j - 1][i + (1 << (j - 1))]] 
+                    ? st[j - 1][i] : st[j - 1][i + (1 << (j - 1))]);
+            }
+        }   
+    }
+    int operator()(int l, int r){
+        int log = __lg(r - l + 1);
+        return (A[st[log][l]] < A[st[log][r - (1 << log) + 1]] 
+                    ? st[log][l] : st[log][r - (1 << log) + 1]);
+    }
+};
+//  -----------------
+template <class T>
 class FastLCA
 {
     int n;
-    std::vector<std::vector<std::pair<int, int>>> g;
+    vector<vector<pair<int, int>>> g;
     TreePre<T> pre;
     ST<T> *st;
-
 public:
-    FastLCA(std::vector<std::vector<std::pair<int, int>>> &g, int root) : n(g.size() - 1), g(g), pre(g, root)
+    FastLCA(vector<vector<pair<int, int>>> &g, int root) : n(g.size() - 1), g(g), pre(g, root)
     {
-        std::vector<int> reLabel(n + 1);
-        for (int i = 1; i <= n; ++i)
-        {
+        vector<int> reLabel(n + 1);
+        for (int i = 1; i <= n; ++i){
             reLabel[pre.dfn[i]] = pre.dep[i];
         }
         st = new ST(reLabel);
     }
-    int getLca(int u, int v)
-    {
-        if (u == v)
-        {
-            return u;
-        }
+    int getLca(int u, int v){
+        if (u == v) return u;
         u = pre.dfn[u], v = pre.dfn[v];
-        if (u > v)
-        {
-            std::swap(u, v);
-        }
+        if (u > v) swap(u, v);
         return pre.fa[pre.idfn[(*st)(u + 1, v)]];
     }
 };
@@ -505,7 +534,7 @@ public:
 
 \newpage
 
-### 倍增求LCA
+## 倍增求LCA
 
 O(log(n)) 求 lca ,原理是先把u和v跳到同一个高度，然后再共同上跳知道最近的 lca
 
@@ -537,7 +566,7 @@ void solve() {
         adj[u].emplace_back(v);
         adj[v].emplace_back(u);
     }
-    // static int fa[500010][21]; 洛谷模板题P3379换成这个才不会t
+    // static int fa[500010][21]; 洛谷模板题P3379换成这个才不会t....
     vector<vector<int>> fa;
     vector<int> dep;
     faLCA(n, root, adj, fa, dep);
@@ -554,8 +583,7 @@ void solve() {
         return fa[u][0];
     };
     while (q--) {
-        int u, v;
-        cin >> u >> v;
+        int u, v; cin >> u >> v;
         cout << lca(u, v) << "\n";
     }
 }
@@ -563,7 +591,7 @@ void solve() {
 
 \newpage
 
-### 树上差分
+## 树上差分
 
 **点权差分** （ $ans[x]$ 表示$x$点的点权）
 
@@ -579,6 +607,69 @@ void solve() {
  ans[x]++;ans[y]++;
  ans[lca]-=2;
 ```
+
+## 点分治
+点分治的思想是统计经过根的路径的贡献，对于不经过根的路径，我们分治下去直至每个点都做为根被统计贡献。在这样的情况下，不断选择树的重心分治是最优的选择，可以证明在该条件下访问点的数量为$nlogn$级别的。也就是说，我们通过一种特殊的遍历顺序得到了所有路径的信息。
+
+特别的，如果我们存下来点分治过程中经过的节点，我们称作点分治序，每个点对应的可结合的点的点分治序都是一个连续的区间。
+
+
+
+在以每个点为根统计答案时，我们考虑两种不同的方法进行求解。
+
+不妨设当前根为$u$,
+
+1.对于$u$的每一颗子树，我们挨个遍历并且和之前遍历到的子树信息进行结合统计答案。在遍历完一颗子树后要加入该子树的信息。在遍历完所有子树后，要清空信息。这样的方法能保证在统计时就不重不漏。请注意清空信息！
+
+2.我们直接把所有$u$的信息统计出来并计算答案，注意到这时候可能有单个子树之中的点结合，这部分是非法答案，我们考虑容斥减掉对应的贡献。具体的说，考虑一个函数$calc(int \ root,int \ val)$表示以$root$为根，当前权值为$val$的贡献，我们要加上$calc(u,0)$，减去所有的 $calc(v,w(u,v))$ 
+
+```cpp
+struct PointerDivide
+{
+    vector<vector<pair<int, int>>> &g;
+    vector<int> siz, dfn, vis;
+    vector<vector<int>> pdt;
+    int root;
+    void dfsSize(int u, int fa){
+        siz[u] = 1;
+        for (auto [v, w] : g[u]){
+            if (v != fa and !vis[v])
+            {
+                dfsSize(v, u);
+                siz[u] += siz[v];
+            }
+        }
+    }
+    int getRoot(int u, int fa, int Size){
+        for (auto [v, w] : g[u]){
+            if (v != fa and !vis[v] and 2 * siz[v] > Size){
+                return getRoot(v, u, Size);
+            }
+        }
+        return u;
+    }
+    void build(int u){
+        vis[u] = true;
+        dfn.push_back(u);
+        for (auto [v, w] : g[u]){
+            if (!vis[v]){
+                dfsSize(v, -1);
+                v = getRoot(v, -1, siz[v]);
+                // pdt[u].push_back(v);
+                build(v);
+            }
+        }
+    }
+    PointerDivide(vector<vector<pair<int, int>>> &g) : g(g), siz(g.size()), vis(g.size())
+    {
+        dfsSize(1, 0);
+        root = getRoot(1, 0, siz[1]);
+        build(root);
+    }
+};
+```
+
+
 
 \newpage
 
@@ -598,30 +689,26 @@ void solve() {
 
 // 以求子树颜色种类为例
 template <class T>
-struct DSUOnTree
-{
+struct DSUOnTree{
     int n;
-    std::vector<std::vector<std::pair<int, int>>> g; // 邻接表
-    std::vector<int> siz, son;
-    std::vector<T> ans; // 子树大小、重儿子,每个节点的答案
+    vector<vector<pair<int, int>>> g; // 邻接表
+    vector<int> siz, son;
+    vector<T> ans; // 子树大小、重儿子,每个节点的答案
     int root;
     int heavyNode = 0;              // 当前处理的重儿子节点
     int typeCnt = 0;                // 颜色种类数量
-    std::vector<int> col, colorCnt; // 原始颜色数组  颜色出现次数数组
-    DSUOnTree(std::vector<std::vector<std::pair<int, int>>> &g, std::vector<int> &col, int root) 
+    vector<int> col, colorCnt; // 原始颜色数组  颜色出现次数数组
+    DSUOnTree(vector<vector<pair<int, int>>> &g, vector<int> &col, int root) 
         : n(g.size() - 1), g(g), siz(n + 1), son(n + 1), ans(n + 1), 
             root(root), col(col), colorCnt(n + 1, 0) {}
     // 预处理重儿子
-    void preProcess(int u, int f)
-    {
+    void preProcess(int u, int f){
         siz[u] = 1;
         for (auto [v, w] : g[u]){
-            if (v != f)
-            {
+            if (v != f){
                 preProcess(v, u);
                 siz[u] += siz[v];
-                if (siz[son[u]] < siz[v])
-                {
+                if (siz[son[u]] < siz[v]){
                     son[u] = v;
                 }
             }
@@ -642,14 +729,11 @@ struct DSUOnTree
             typeCnt -= (colorCnt[col[u]] == 0);
         }
     }
-
     // 遍历子树统计/清除信息
     void traverse(int u, int f, int val){
         update(u, f, val);
-        for (auto [v, w] : g[u])
-        {
-            if (v != f && v != heavyNode)
-            {
+        for (auto [v, w] : g[u]){
+            if (v != f && v != heavyNode){
                 traverse(v, u, val);
             }
         }
@@ -658,8 +742,7 @@ struct DSUOnTree
     void solve(int u, int f, bool keep){
         // 1. 先处理轻儿子（不保留信息）
         for (auto [v, w] : g[u]){
-            if (v != f && v != son[u])
-            {
+            if (v != f && v != son[u]){
                 solve(v, u, false);
             }
         }
@@ -670,18 +753,14 @@ struct DSUOnTree
         }
         // 3. 再次遍历轻儿子并合并信息
         for (auto [v, w] : g[u]){
-            if (v != f && v != son[u])
-            {
-                traverse(v, u, 1);
-            }
+            if (v != f && v != son[u]) traverse(v, u, 1);
         }
         update(u, f, 1); // 添加当前节点信息
         // 4. 此处可保存当前节点的答案
         ans[u] = typeCnt;
         heavyNode = 0;
         // 5. 如果需要清除信息
-        if (!keep)
-        {
+        if (!keep){
             traverse(u, f, -1);
             typeCnt = 0;
         }
@@ -705,72 +784,57 @@ struct DSUOnTree
 
  $2$对于基环树一些性质的题目，以基环树直径为例，我们往往要破环成链，分类讨论。具体的说，我们任选环上某条边记为$(u,v)$,我们将其断开，那么剩下的结构将是一棵树，我们可以朴素的求出它的直径，这是不经过$(u,v)$边的最大直径，然后我们考虑一定经过$(u,v)$边的最大直径，我们不难发现，直径一定是破环后的链的一个前缀+一个后缀+该边拼凑而成，我们要先对每棵小树处理出它的最大深度$dep$，那么$pre[u]=max(pre[u-1],dep[u]+len[u])$，$len[u]$是链左边端点到该点的长度，我们求出前后缀$max$后，遍历取最大即可
 
-### 基环树
+**基环树**
 
 ```cpp
-struct RingTree
-{
-    std::vector<std::vector<std::pair<int, int>>> g; // 基环树上的小树
-    std::vector<int> ring, ringVal;                  // 环,环的出点的权值
+struct RingTree{
+    vector<vector<pair<int, int>>> g; // 基环树上的小树
+    vector<int> ring, ringVal;        // 环,环的出点的权值
     // ringVal[i]对应的是 ring[i]和ring[i+1]的权值
 
-    RingTree(std::vector<std::vector<std::pair<int, int>>> e) : g(e.size())
-    {
+    RingTree(vector<vector<pair<int, int>>> e) : g(e.size()){
         int n = e.size() - 1;
-        std::vector<int> vis(n + 1, 0), deg(n + 1, 0);
-        for (int u = 1; u <= n; ++u)
-        {
-            for (auto [v, w] : e[u])
-            {
+        vector<int> vis(n + 1, 0), deg(n + 1, 0);
+        for (int u = 1; u <= n; ++u){
+            for (auto [v, w] : e[u]){
                 deg[v]++;
             }
         }
-        auto dfs1 = [&](auto dfs1, int u) -> void
-        {
+        auto dfs1 = [&](auto dfs1, int u) -> void{
             vis[u] = 1;
-            for (auto [v, w] : e[u])
-            {
-                if (!vis[v])
-                {
+            for (auto [v, w] : e[u]){
+                if (!vis[v]){
                     // dsu.merge(u, v);
                     g[v].emplace_back(u, w);
                     deg[v]--;
-                    if (deg[v] == 1)
-                    {
+                    if (deg[v] == 1){
                         dfs1(dfs1, v);
                     }
                 }
             }
         };
-        for (int i = 1; i <= n; ++i)
-        {
+        for (int i = 1; i <= n; ++i){
             if (!vis[i] and deg[i] == 1) // 从叶子开始剥离树的结构
             {
                 dfs1(dfs1, i);
             }
         }
-        auto dfs2 = [&](auto dfs2, int u) -> void
-        {
+        auto dfs2 = [&](auto dfs2, int u) -> void{
             ring.push_back(u);
             vis[u] = 1;
-            for (auto [v, w] : e[u])
-            {
-                if (!vis[v])
-                {
+            for (auto [v, w] : e[u]){
+                if (!vis[v]){
                     ringVal.push_back(w);
                     dfs2(dfs2, v);
                 }
             }
         };
-        for (int i = 1; i <= n; ++i)
-        {
+        for (int i = 1; i <= n; ++i){
             if (!vis[i]) // 一定是环点
             {
                 dfs2(dfs2, i); // 找到整个环
-                for (auto [v, w] : e[ring.back()])
-                {
-                    if (v == ring.front())
-                    {
+                for (auto [v, w] : e[ring.back()]){
+                    if (v == ring.front()){
                         ringVal.push_back(w); // 把环起点和终点的边权加入
                         break;
                     }
@@ -787,22 +851,22 @@ struct RingTree
 
 注意有些时候题目可能不是单纯的基环树森林，它可能是树森林和基环树森林的并集，需要分类讨论
 
-### 基环树森林
+**基环树森林**
 
 ```cpp
-struct RingTreeForest
-{
-    int cnt = 0;
-    int n;
-    std::vector<int> &fa; // 基环树的森林的出边/父边
-    std::vector<int> onRing, root, ringLen, pos, posOnRing;
-    // onRing[i]表示i是否在环上，root[i]表示i所在的树的根，ringLen存所有环的长度，pos[i]表示i点在哪个环上，posOnRing[i]表示i在环上的位置
-    std::vector<std::vector<int>> ring, id;
+struct RingTreeForest{
+    int cnt = 0 ,n;
+    vector<int> &fa; // 基环树的森林的出边/父边
+    vector<int> onRing, root, ringLen, pos, posOnRing;
+    // onRing[i]表示i是否在环上，root[i]表示i所在的树的根，ringLen存所有环的长度，
+    // pos[i]表示i点在哪个环上，posOnRing[i]表示i在环上的位置
+    vector<vector<int>> ring, id;
     // ring[i]存环i的所有点，下标从0开始
-    std::vector<std::vector<int>> g;
-    RingTreeForest(std::vector<int> &b) : n(b.size()), fa(b), g(n), onRing(n, 0), root(n, 0), pos(n, 0), posOnRing(n, 0), ring(n)
-    {
-        std::vector<int> vis(n, 0);
+    vector<vector<int>> g;
+    RingTreeForest(vector<int> &b) : n(b.size()), fa(b), g(n), 
+    onRing(n, 0), root(n, 0), pos(n, 0), 
+    posOnRing(n, 0), ring(n){
+        vector<int> vis(n, 0);
         for (int u = 1; u <= n - 1; ++u) {
             int v = u;
             while (!vis[v] and v) // 防止跳到0
@@ -856,21 +920,21 @@ struct VirtualTreePre
 {
     TreePre<T> pre;
     int root;
-    std::vector<std::vector<std::pair<int, int>>> vt;
-    VirtualTreePre(std::vector<std::vector<std::pair<int, int>>> &g, int root) : pre(g, root), root(root), vt(g.size()) {}
-
-    void build(std::vector<int> a)
+    vector<vector<pair<int, int>>> vt;
+    VirtualTreePre(vector<vector<pair<int, int>>> &g, int root)
+         : pre(g, root), root(root), vt(g.size()) {}
+    void build(vector<int> a)
     {
         a.push_back(root); //加入根节点方便DP,根据题目情况判断是否加root
-        std::sort(begin(a), end(a), [&](int u, int v)
+        sort(begin(a), end(a), [&](int u, int v)
                   { return pre.dfn[u] < pre.dfn[v]; });
         for (int i = a.size() - 1; i; --i)
         {
             a.push_back(pre.getLca(a[i], a[i - 1]));
         }
-        std::sort(begin(a), end(a), [&](int u, int v)
+        sort(begin(a), end(a), [&](int u, int v)
                   { return pre.dfn[u] < pre.dfn[v]; });
-        a.erase(std::unique(begin(a), end(a)), end(a));
+        a.erase(unique(begin(a), end(a)), end(a));
         for (auto u : a)
         {
             vt[u].clear();
@@ -3422,6 +3486,12 @@ $R(3,3)=6,R(4,4)=18$
 若满足兰道定理，我们一定可以构造出满足条件的竞赛图。
 
 构造方法：我们不妨设每个选手有一个需求值$a[i]-b[i]$，其中$a$是需要赢多少场，$b$是已经赢多少场，我们每次让需求最大的选手打赢需求最小的选手即可。
+
+
+
+
+
+
 
 \newpage
 

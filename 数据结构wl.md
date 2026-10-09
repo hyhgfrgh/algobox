@@ -2975,6 +2975,85 @@ private:
 };
 ```
 
+### 维护历史版本,区间加，区间求和
+
+```cpp
+template<class T>
+class PresidentTree{
+private:
+    struct Node{
+        int lc = 0,rc = 0;
+        T sum = T{},add = T{};
+    };
+    int n;
+    vector<int> root;
+    vector<Node> tr;
+    int build(const vector<T>& a,int l,int r){
+        int u = (int)tr.size();
+        tr.push_back(Node{});
+        if(l == r){
+            tr[u].sum = a[l];
+            return u;
+        }
+        int mid = (l+r)/2;
+        tr[u].lc = build(a,l,mid);
+        tr[u].rc = build(a,mid+1,r);
+        return u;
+    }
+    int modify(int old,int l,int r,int x,int y,T val){
+        Node cur = tr[old];
+        int u = (int)tr.size();
+        tr.push_back(cur);
+        if(x<=l and y>=r){
+            tr[u].sum += val*(r-l+1);
+            tr[u].add += val;
+            return u;
+        }
+        int mid = (l+r)/2;
+        if(x<=mid){
+            tr[u].lc = modify(tr[old].lc, l, mid, x, y, val);
+        }
+        if(y>mid){
+            tr[u].rc = modify(tr[old].rc, mid+1, r,x, y, val);
+        }
+        tr[u].sum = tr[tr[u].lc].sum+tr[tr[u].rc].sum+tr[u].add*(r-l+1);
+        return u;
+    }
+    T query(int u,int l,int r,int x,int y,T carry) const{
+        if(x<=l and y>=r){
+            return tr[u].sum+carry*(r-l+1);
+        }
+        carry += tr[u].add;
+        int mid = (l+r)/2;
+        T ans = T{};
+        if(x<=mid){
+            ans += query(tr[u].lc, l, mid, x, y, carry);
+        }
+        if(y>mid){
+            ans += query(tr[u].rc, mid+1, r, x, y, carry);
+        }
+        return ans;
+    }
+public:
+    PresidentTree(const vector<T>& a,int capacity)
+        :n(a.size()-1),root(capacity+1,0)
+    {
+        tr.reserve(capacity+100);
+        tr.push_back(Node{});
+        root[0] = build(a, 1, n);
+    }
+    void RangeAdd(int u,int v,int l,int r,int add){
+        root[u] = modify(root[v], 1, n, l, r, add);
+    }
+    T RangeSum(int ver,int l,int r) const{
+        return query(root[ver], 1, n, l, r, 0);
+    }
+    T RangeSum(int u,int v,int l,int r)const{
+        return RangeSum(u,l,r)-RangeSum(v-1, l, r);
+    }
+};
+```
+
 \newpage
 
 ### 维护树上信息
@@ -3941,7 +4020,7 @@ public:
             for (int i = 1; i + (1 << j) - 1 <= n; ++i)
             {
                 st[j][i] = (a[st[j - 1][i]] > a[st[j - 1][i + (1 << (j - 1))]] 
-                    ? st[j - 1][i] : st[j - 1][i + (1 << (j - 1))]);
+                    ? st[j - 1][i] : st[j - 1][i + (1 << (j - 1))]);
             }
         }
     }
@@ -3950,7 +4029,7 @@ public:
     {
         int log = std::__lg(r - l + 1);
         return (A[st[log][l]] > A[st[log][r - (1 << log) + 1]] 
-                    ? st[log][l] : st[log][r - (1 << log) + 1]);
+                    ? st[log][l] : st[log][r - (1 << log) + 1]);
     }
 };
 ```
