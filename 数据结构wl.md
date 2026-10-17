@@ -3078,6 +3078,52 @@ public:
 
 ## 字典树
 
+### 01Trie
+
+```cpp
+struct Trie{
+    int idx = 0;
+    struct node{
+        array<int,2> son;
+        int cnt = 0;
+        node():son{}{}
+    };
+    vector<node> t;
+
+    Trie(){
+        t.assign(1,node());
+    }
+    int newnode(){
+        t.emplace_back();
+        return t.size()-1;
+    }
+    void insert(int num){
+        int p = 0;
+        for(int i = 35;i>=0;i--){
+            int ne = (num>>i)&1;
+            if(t[p].son[ne] == 0){
+                t[p].son[ne] = newnode();
+            }
+            p = t[p].son[ne];
+            t[p].cnt++;
+        }
+    }
+    int queryMax(int num){
+        int p = 0,res = 0;
+        for(int i = 35;i>=0;i--){
+            int ne = (num>>i)&1;
+            if(t[p].son[ne^1] and t[t[p].son[ne^1]].cnt>0){
+                p = t[p].son[ne^1];
+                res |= 1LL<<i;
+            }else{
+                p = t[p].son[ne];
+            }
+        }
+        return res;
+    }
+};
+```
+
 ### 字典树
 
 在 `insert` 和 `query` 中初始p为0,节点p不存信息，其26(小写26个英文字母)个son指向所有字符串的开头，根据需要维护的信息修改 node的变量 和 `insert` 和 `query`

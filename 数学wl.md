@@ -1,5 +1,11 @@
 \newpage
 
+### 等比数列求和
+
+\[ \boxed{1+q+q^2+\cdots+q^{n-1} =\frac{q^n-1}{q-1}} \]
+
+\[ \boxed{S_n=\frac{a(1-q^n)}{1-q}} \]  （q  !=  1）
+
 # 组合数学
 
 ### 组合数预处理
@@ -1782,6 +1788,254 @@ $$
 > (3)把矩阵某一行所有元素的K倍加到另一行(列)对应的元素上去
 
 标准型矩阵：元素只有1和0组成，且矩阵的左上角是一个单位矩阵，其余元素全为零。
+
+
+
+## 行列式求值
+
+复杂度$O(n^3logP)$
+
+类似于高斯消元消成上三角形式，这里我们采用了辗转相减的方法，可以应对$mod$数为非质数的情况
+
+```cpp
+int determinant(std::vector<std::vector<int>> a, int n)
+{
+    int res = 1, w = 1;
+    for (int i = 1; i <= n; i++)
+    {
+        for (int j = i + 1; j <= n; ++j)
+        {
+            while (a[i][i])
+            {
+                int div = a[j][i] / a[i][i];
+                for (int k = i; k <= n; ++k)
+                {
+                    a[j][k] = (a[j][k] - 1ll * div * a[i][k] % p + p) % p;
+                }
+                swap(a[i], a[j]);
+                w = -w;
+            } // 对第 i 行和第 j 行做辗转相减。不断交换次序相减
+            swap(a[i], a[j]);
+            w = -w;
+        }
+    }
+    for (int i = 1; i <= n; i++) // 化成上三角
+    {
+        res = 1ll * a[i][i] * res % p; // 全部乘起来
+    }
+    res = 1ll * w * res;  // 正负问题
+    return (res + p) % p; 
+}
+
+```
+
+
+
+## 加法高斯消元
+
+我们通过$O(n^3)$的三重循环将增广矩阵消成上三角形式，再从末尾式子开始回代得到答案，其中若系数全都为$0$但解不为$0$，则说明无解。否则有解，如果存在自由元，那么有无穷多解，否则有唯一解
+
+```cpp
+const long double eps = 1e-8;
+int gauss(std::vector<std::vector<long double>> &a, int n)
+{
+    int col, row;
+    for (col = 0, row = 0; col < n; col++) // 注意下标是从0开始的 n是未知数的个数
+    {
+        int tmp = row;
+        for (int i = row; i < n; i++)
+        {
+            if (fabs(a[i][col]) > fabs(a[tmp][col]))
+            {
+                tmp = i;
+            }
+        }
+        if (fabs(a[tmp][col]) < eps) // 为0
+        {
+            continue;
+        }
+        // tmp是绝对值最大的位置
+        // row是最上面的位置
+        // 把这两行完全交换
+        for (int i = col; i <= n; i++)
+        {
+            std::swap(a[tmp][i], a[row][i]);
+        }
+        for (int i = n; i >= col; i--)
+        {
+            a[row][i] /= a[row][col];
+        }
+        for (int i = row + 1; i < n; i++)
+        {
+            if (fabs(a[i][col]) > eps)
+            {
+                for (int j = n; j >= col; j--)
+                {
+                    a[i][j] -= a[row][j] * a[i][col];
+                }
+            }
+        }
+        row++;
+    } // 这个循环的作用是消成上三角
+    for (int i = n - 1; i >= 0; i--)
+    {
+        for (int j = i + 1; j < n; j++)
+        {
+            a[i][n] -= a[i][j] * a[j][n]; // 得到正确的解
+        }
+    }
+    if (row < n) // 这里说明[row,n-1]的行已经没系数了
+    {
+        for (int i = row; i < n; i++)
+        {
+            if (fabs(a[i][n]) > eps) // 此刻还有值就是无解
+            {
+                return -1; // 无解
+            }
+        }
+        return 1; // 有无穷多组解 因为存在自由元
+    }
+    return 0; // 有唯一解  a[i][n]为各个解(i从0到n-1)
+}
+
+```
+
+## 异或高斯消元
+
+复杂度为$O(n^2m/w)$，做法和加法类似，使用$bitset$优化。
+
+n个未知数，m个方程
+
+```cpp
+const int N = 1001;
+// rank 返回秩，K 为最小的K使前K行得到唯一解，K+1~M行无效(有唯一解的前提下)
+std::vector<int> Gauss(std::vector<std::bitset<N>> &equation, std::vector<int> &res, int n,int& rank,int &K)
+{
+    int m = equation.size();
+    std::vector<int> ans(n, 0);
+    int row = 0;
+
+    // 前向消元
+    for (int col = 0; col < n && row < m; ++col)
+    {
+        // 寻找主元
+        int pivot = -1;
+        for (int i = row; i < m; ++i)
+        {
+            if (equation[i][col])
+            {
+                pivot = i;
+                break;
+            }
+        }
+
+        if (pivot == -1)
+            continue; // 自由元
+
+        K = max(K,pivot+1);
+
+        // 交换行
+        if (pivot != row)
+        {
+            std::swap(equation[row], equation[pivot]);
+            std::swap(res[row], res[pivot]);
+        }
+
+        // 消去其他行
+        for (int i = 0; i < m; ++i)
+        {
+            if (i != row && equation[i][col])
+            {
+                equation[i] ^= equation[row];
+                res[i] ^= res[row];
+            }
+        }
+
+        ++row;
+    }
+
+    // 检查无解情况
+    for (int i = row; i < m; ++i)
+    {
+        if (res[i])
+        {
+            return {-1}; // 无解
+        }
+    }
+
+    // 回代求解
+    for (int i = 0; i < n; ++i)
+    {
+        ans[i] = -1; // 初始化为自由元
+    }
+
+    for (int i = row - 1; i >= 0; --i)
+    {
+        // 找到主元列
+        int col = 0;
+        while (col < n && !equation[i][col])
+            ++col;
+
+        if (col >= n)
+            continue; // 全零行
+
+        ans[col] = res[i];
+        // 标记非自由元
+        for (int j = col + 1; j < n; ++j)
+        {
+            if (equation[i][j])
+            {
+                if (ans[j] == -1)
+                {
+                    // 自由元可以任意取值，这里设为0
+                    ans[j] = 0;
+                }
+                ans[col] ^= ans[j];
+            }
+        }
+    }
+    // 处理自由元（设为0）
+    for (int i = 0; i < n; ++i)
+    {
+        if (ans[i] == -1)
+        {
+            ans[i] = 0;
+        }
+    }
+    rank = row;
+    return ans;
+}
+
+void init(){}
+#define MultiTest   0
+void solve(){
+    int n,m;cin>>n>>m;
+    std::vector<std::bitset<N>> equation(m);
+    vector<int> res(m);
+    for(int i = 0;i<m;i++){
+        string s;cin>>s;
+        for(int j = 0;j<s.size();j++){
+            if(s[j] == '1') equation[i][j] = 1;
+        }
+        cin>>res[i];
+    }
+    int rank = 0,K = 0;
+    auto ans = Gauss(equation, res, n, rank, K);
+    if(res == vector<int>{-1}) {
+			// 无解
+        return ;
+    }
+    if(rank != n){
+        cout<<"多解\n";
+        return ;
+    }
+    cout<<K<<"\n";
+    for(int i = 0;i<n;i++){
+        cout<<(ans[i]&1?"1":"0")<<"\n";
+    }
+}
+
+```
 
 
 

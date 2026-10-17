@@ -52,6 +52,20 @@ ctrl + shift+p 搜open keyboard shortcuts(JSON)
 + 遇到$a \ mod \ b$可以试着转化为 $a-b\times \lfloor \frac{a}{b} \rfloor$
 + 值域比较小且数组中元素各不同可以考虑调和级数nlogn复杂度做法
 
+## 大质数 及取模（常数小）
+
+```cpp
+#define int long long
+int P = (1LL<<61)-1;
+int mul(int a,int b){
+    i128 x = (i128)a*b;
+    u64 res = (u64)(x&P)+(u64)(x>>61);
+    res = (res&P)+(res>>61);
+    if(res>=P) res -= P;
+    return (int)res;
+}
+```
+
 ## 内存估算
 
 | 类型          | 字节数       | 256 MB 大约能开 |
