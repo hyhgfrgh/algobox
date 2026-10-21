@@ -764,6 +764,40 @@ for (int j = 0; j < n; ++j)
 
 当然我们不局限于求子集，也可以做到求超集，也可以从原数向子集DP等等
 
+### 旅行商问题
+
+从0节点出发，最后返回0节点，有向图
+
+```cpp
+void solve(){
+    int n;cin>>n;
+    vector<vector<int>> dis(n,vector<int> (n));
+    for(int i = 0;i<n;i++){
+        for(int j = 0;j<n;j++){
+            cin>>dis[i][j];
+        }
+    }
+    vector<vector<int>> dp(n,vector<int> (1<<n,inf));
+    dp[0][1<<0] = 0;
+    for(int mask = 1;mask<(1<<n);mask++){
+        for(int i = 0;i<n;i++){
+            if(mask>>i&1) continue;
+            for(int j = 0;j<n;j++){
+                if(mask>>j&1){
+                    dp[i][mask|(1<<i)] = min(dp[i][mask|(1<<i)],dp[j][mask]+dis[j][i]);
+                }
+            }
+        }
+    }
+    int ans = inf;
+    for(int i = 0;i<n;i++){
+        ans = min(ans,dp[i][(1<<n)-1]+dis[i][0]);
+    }
+    cout<< ans<<"\n";
+}
+
+```
+
 \newpage
 
 ## 数位DP
