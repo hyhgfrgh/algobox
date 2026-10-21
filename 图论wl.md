@@ -4532,6 +4532,56 @@ int main()
 
 ## 环计数问题
 
+### 无向图简单环计数
+
+复杂度$O(n^2 *2^n)$ 
+
+由于无向图一个环顺时针和逆时针都会重复计数，所以ans/=2
+
+下面代码统计的为长度>=3的简单环个数
+
+```cpp
+void solve(){
+    int n,m;cin>>n>>m;
+    vector<vector<int>> e(n);
+    vector<vector<int>> vis(n,vector<int> (n));
+    for(int i = 1;i<=m;i++){
+        int u,v;cin>>u>>v;
+        u--,v--;
+        e[u].emplace_back(v);
+        e[v].emplace_back(u);
+        vis[u][v] = vis[v][u] = 1;
+    } 
+    vector<vector<int>> dp(n,vector<int> (1LL<<n));
+    for(int i = 0;i<n;i++){
+        dp[i][1<<i] = 1;
+    }
+    for(int i = 1;i<(1<<n);i++){
+        for(int k = __lg(i&-i);k<n;k++){
+            if(i>>k&1) continue;
+            for(int v:e[k]){
+                if(i>>v&1){
+                    dp[k][i|(1<<k)] += dp[v][i];
+                }
+            }
+        }
+    }
+    int ans = 0;
+    for(int i = 1;i<(1<<n);i++){
+        if(__builtin_popcount(i)<=2) continue;
+        for(int j = 0;j<n;j++){
+            int k = __lg(i&-i);
+            if(vis[j][k]) ans += dp[j][i];
+        }
+    }
+    ans /= 2;
+    cout<< ans<<"\n";
+}
+
+```
+
+
+
 ### 无向图三元环计数
 
 首先给所有边定向。我们规定从度数小的点指向度数大的点，度数相同就从编号小的点指向编号大的点。那么此时此图是一张有向无环图。

@@ -106,6 +106,26 @@
 }
 ```
 
+## 优先队列
+
+用自定义比较器，让 `priority_queue` 存 `id`，比较时看 `val[id]`。
+
+```
+vector<int> val;
+
+struct cmp {
+    bool operator()(int x, int y) const {
+        return val[x] < val[y];
+    }
+};
+
+priority_queue<int, vector<int>, cmp> pq;
+```
+
+这样 `pq.top()` 就是 `val[id]` 最大的那个 `id`。
+
+
+
 \newpage
 
 ## 树状数组
