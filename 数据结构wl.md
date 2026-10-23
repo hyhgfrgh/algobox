@@ -27,19 +27,19 @@
 
     // 定义我们要加的二次函数 f(x) = ax^2 + bx + c
     // 这里 x 是相对位置 (1, 2, 3...)
-    long long f(long long x, long long a, long long b, long long c) {
+    i64 f(i64 x, i64 a, i64 b, i64 c) {
         return a * x * x + b * x + c;
     }
 
     // 辅助函数：计算在原数组绝对下标 i 处，实际加上的函数值
     // 如果 i 小于起点 l，则无意义（在我们的算法中不会被调用到非法位置）
-    long long g(long long i, long long l, long long a, long long b, long long c) {
-        long long x = i - l + 1; // 转换为相对位置
+    i64 g(i64 i, i64 l, i64 a, i64 b, i64 c) {
+        i64 x = i - l + 1; // 转换为相对位置
         return f(x, a, b, c);
     }
 
     // 三阶差分数组的区间修改
-    void add_quadratic(vector<long long>& d3, int l, int r, long long a, long long b, long long c) {
+    void add_quadratic(vector<i64>& d3, int l, int r, i64 a, i64 b, i64 c) {
         // 1. 起点 l 产生的启动变化 (+1 倍)
         d3[l]     += g(l, l, a, b, c);
         d3[l + 1] += g(l + 1, l, a, b, c) - 3 * g(l, l, a, b, c);
@@ -54,13 +54,13 @@
     int main() {
         int n = 10; // 数组长度
         // 差分数组需要开大一点，防止 r+3 越界。通常开 N + 5 即可
-        vector<long long> d3(n + 5, 0); 
-        vector<long long> d2(n + 5, 0);
-        vector<long long> d1(n + 5, 0);
-        vector<long long> a_arr(n + 5, 0);
+        vector<i64> d3(n + 5, 0); 
+        vector<i64> d2(n + 5, 0);
+        vector<i64> d1(n + 5, 0);
+        vector<i64> a_arr(n + 5, 0);
 
         // 示例：在区间 [2, 5] 加上 f(x) = x^2 (a=1, b=0, c=0)
-        add_quadratic(d3, 2, 10, 1, 1, 0);
+        add_quadratic(d3, 2, 5, 1, 0, 0);
 
         // 还原原数组：做 3 次前缀和
         for (int i = 1; i <= n; ++i) {
