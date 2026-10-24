@@ -136,17 +136,11 @@ priority_queue<int, vector<int>, cmp> pq;
 template <typename T>
 struct Fenwick {
     int n;
-    std::vector<T> a;
-
+    vector<T> a;
     Fenwick(int n_ = 0) {
-        init(n_);
-    }
-
-    void init(int n_) {
         n = n_;
         a.assign(n+5, T{});
     }
-
     void add(int x, const T &v) {
         for (int i = x; i <= n; i += i & -i) {
             a[i] = a[i] + v;
@@ -159,11 +153,9 @@ struct Fenwick {
         }
         return ans;
     }
-
     T rangeSum(int l, int r) {
-        return sum(r) - sum(l);
+        return sum(r) - sum(l-1);
     }
-
     int select(const T &k) {
         int x = 0;
         T cur{};
@@ -1671,6 +1663,171 @@ private:
 };
 ```
 
+### 线段树套树状数组
+
+空间复杂度${\cal O}(nlogn)$,时间复杂度${\cal O}(\log n\log n)$
+
+```cpp
+template <typename T>
+struct Fenwick {
+    int n;
+    vector<T> a;
+    Fenwick(int n_ = 0) {
+        n = n_;
+        a.assign(n+5, T{});
+    }
+    void add(int x, const T &v) {
+        for (int i = x; i <= n; i += i & -i) {
+            a[i] = a[i] + v;
+        }
+    }
+    T sum(int x) {
+        T ans{};
+        for (int i = x; i > 0; i -= i & -i) {
+            ans = ans + a[i];
+        }
+        return ans;
+    }
+    T rangeSum(int l, int r) {
+        return sum(r) - sum(l-1);
+    }
+};
+template<class T>
+struct SegmentTree{
+#define lc u<<1
+#define rc u<<1 | 1
+public:
+    struct Node{
+        int l, r;
+        vector<int> lx;
+        Fenwick<T> BIT; 
+        T getSum(int low,int high){
+            auto pr = upper_bound(lx.begin()+1, lx.end(), high)-lx.begin()-1;
+            auto pl = lower_bound(lx.begin()+1, lx.end(), low)-lx.begin();
+            if(pr>=pl) return BIT.rangeSum(pl, pr);
+            else return 0;
+        }
+        void Modify(int la,int ne){
+            auto p = lower_bound(lx.begin()+1, lx.end(), la)-lx.begin();
+            BIT.add(p, -1);
+            p = lower_bound(lx.begin()+1, lx.end(), ne)-lx.begin();
+            BIT.add(p, 1);
+        }
+    };
+    // e存为每个位置可能出现的数字
+    SegmentTree(vector<vector<int>> &e):n(e.size()),tr(4*n){
+        n--;
+        function<void(int,int,int)> build = [&](int u,int l,int r){
+            tr[u].l = l,tr[u].r = r;
+            auto& lx = tr[u].lx;lx.push_back(0);
+            for(int i = l;i<=r;i++){
+                for(int v:e[i]){
+                    lx.push_back(v);
+                }
+            }
+            sort(lx.begin()+1,lx.end());
+            lx.erase(unique(lx.begin()+1,lx.end()),lx.end());
+            auto& BIT = tr[u].BIT;
+            BIT = Fenwick<T> (lx.size());
+            for(int i = l;i<=r;i++){
+                int p = lower_bound(lx.begin()+1, lx.end(), i)-lx.begin();
+                BIT.add(p,1);
+            }
+            if(l == r) return ;
+            int mid = (l+r)/2;
+            build(lc,l,mid);
+            build(rc,mid+1,r);
+        };
+        build(1,1,n);
+    }
+    // 询问[x,y]内>=low 且<=high的值的个数
+    int RangeQuery(int x,int y,int low,int high){
+        if(x>y) return 0;
+        return RangeQuery(1, 1, n, x, y, low, high);
+    }
+    // 单点修改，把位置x的值从la该改为ne
+    void SingleModify(int p,int la,int ne){
+        SingleModify(1, 1, n, p, la, ne);
+    }
+private:
+    int n;
+    vector<Node> tr;
+    int RangeQuery(int u,int l,int r,int x,int y,int low,int high){
+        if(x<=l and y>=r){
+            return tr[u].getSum(low,high);
+        }
+        int mid = (l+r)/2;
+        int res = 0;
+        if(x<=mid) res += RangeQuery(lc, l, mid, x, y, low, high);
+        if(y> mid) res += RangeQuery(rc, mid+1, r, x, y, low, high);
+        return res;
+    }
+    void SingleModify(int u,int l,int r,int p,int la,int ne){
+        tr[u].Modify(la,ne);
+        if(l == r) return ;
+        int mid = (l+r)/2;
+        if(p<=mid) SingleModify(lc, l, mid, p, la, ne);
+        else SingleModify(rc, mid+1, r, p, la, ne);
+    }
+};
+```
+
+例题
+
+一开始 Anton 的排列是 ${1, 2, ..., n}$，即对于所有的 $1 \leq i \leq n$，都有 $a_i = i$。
+
+输入的第一行包含两个整数 $n$ 和 $q$，$1 \leq n \leq 2 \times 10^5$，$1 \leq q \leq 5 \times 10^4$，分别表示排列的长度和 Anton 进行的操作次数。
+
+接下来的 $q$ 行，每行包含两个整数 $l_i$ 和 $r_i$，$1 \leq l_i, r_i \leq n$，表示 Anton 在第 $i$ 次操作中交换排列第 $l_i$ 个和第 $r_i$ 个元素。注意，在某次操作中，Anton 可能会交换同一个元素。排列中的元素编号从 1 开始。
+
+输出共 $q$ 行，第 $i$ 行输出 Anton 在第 $i$ 次操作后当前排列中的逆序对个数。
+
+```cpp
+void solve(){
+    int n,q;cin>>n>>q;
+    vector<int> p(n+1);
+    vector<vector<int>> e(n+1);
+    for(int i = 1;i<=n;i++){
+        p[i] = i;
+        e[i].push_back(i);
+    }
+    vector<pair<int,int>> qq;
+    while(q--){ // 保存位置i可能的值
+        int l,r;cin>>l>>r;
+        qq.push_back({l,r});
+        swap(p[l],p[r]);
+        e[l].push_back(p[l]);
+        e[r].push_back(p[r]);
+    }
+    for(int i = 1;i<=n;i++){
+        sort(e[i].begin(),e[i].end());
+        e[i].erase(unique(e[i].begin(),e[i].end()),e[i].end());
+    }
+    iota(p.begin(), p.end(), 0);
+    i64 ans = 0;
+    SegmentTree<int> tr(e);
+    for(auto [l,r]:qq){
+        if(l == r) {
+            cout<< ans<<"\n";
+            continue;
+        }
+        if(l>r) swap(l, r);
+        if(p[l]<p[r]){
+            int tot = tr.RangeQuery(l+1, r-1, p[l], p[r]);
+            ans += 2*tot+1;
+        }else{
+            int tot = tr.RangeQuery(l+1, r-1, p[r], p[l]);
+            ans -= 2*tot+1;
+        }
+
+        tr.SingleModify(l, p[l], p[r]);
+        tr.SingleModify(r, p[r], p[l]);
+        swap(p[l], p[r]);
+        cout<< ans<<"\n";
+    }
+}
+```
+
 ### 线段树套CHT
 
 ```cpp
@@ -1816,8 +1973,6 @@ signed main(){
     return 0;
 }
 ```
-
-
 
 
 
