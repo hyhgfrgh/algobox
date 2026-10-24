@@ -83,11 +83,11 @@ int mul(int a,int b){
 ## 正负数除法上下取整
 
 ```cpp
-int Ceil(int fz,int fm){
+int Ceil(int fz,int fm){ // 2.5 -> 3, -2.1 -> -2
     if(fm<0) fm *= -1,fz *= -1;
     return fz>=0?(fz+fm-1)/fm:fz/fm;
 }
-int Floor(int fz,int fm){
+int Floor(int fz,int fm){ // 2.5 -> 2 , -2.5 -> -3
     if(fm<0) fm *= -1,fz *= -1;
     return fz>=0?fz/fm:(fz-fm+1)/fm;
 }

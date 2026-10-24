@@ -1,5 +1,12 @@
 整理自www.algowiki.cn/competitions?tab=tricks
 
+## popcount
+
+```cpp
+__builtin_popcount(x); // int
+__builtin_popcountll(x); // long long
+```
+
 ## 连续按位异或和
 
 设
@@ -161,3 +168,11 @@ $$
 
 也就是n和n-m两个数的二进制中，没有同一位同时为 \(1\) ,故$(m\& (n-m))=0$ 
 
+## 图上重轻点根号分治
+
+设阈值 \(B=\sqrt m\)。
+
+- 轻点：\(\deg(u)\le B\)。邻居最多 \(O(\sqrt m)\)，可以暴力枚举。
+- 重点：\(\deg(u)>B\)。因为所有点的度数和为 \(2m\)，重点最多 \(O(\sqrt m)\) 个，可以针对重点预处理或维护信息。
+
+在具有 $m$ 条边的图中，最多只有 $O(\sqrt{m})$ 种度数不同的结点。
