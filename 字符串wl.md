@@ -564,7 +564,125 @@ struct Pam
 };
 ```
 
+## 后缀数组
+后缀数组的三个核心函数：$sa,rk,height$，$sa[i]$表示排名为$i$的后缀编号，$rk[i]$表示编号为$i$的后缀排名，不难发现$sa$和$rk$互为反函数。$height[i]=lcp(sa[i],sa[i-1])$),即两个排名相邻的后缀的$lcp$。
 
+我们利用倍增+计数排序可以在${\cal O}(nlogn)$的时间内算出$sa,rk,height$
+
+重要性质(常见用法)：
+
+两个后缀的最长公共前缀：$LCP(sa[i],sa[j]) = min_{x=i+1}^j height[x]$
+
+不同子串数目$num=n*(n+1)/2-\sum_{i=2}^n height[i]$，即所有子串数目减去重复子串数目
+
+查找子串及其出现次数：可以在$rank$数组上二分，复杂度$logn*|S|$，
+
+最长重复子串（重叠或不重叠）：利用$height$可以直接求得
+
+字符串匹配问题：我们把模式串和匹配串用空格拼在一起，利用$rank$即可。
+
+最长公共子串：仍然考虑把串拼在一起，利用$height$求解
+
+```cpp
+struct SuffixArray
+{
+    const int n; // 字符串长度
+    std::vector<int> sa, rk, h; // 后缀数组、排名数组、高度数组
+
+    template <class T>
+    SuffixArray(const T &s): n(s.size()), sa(n), rk(n), id(n), tmp(n)
+    {
+        // 初始化id数组为0~n-1（用于排序下标）
+        std::iota(begin(id), end(id), 0); 
+        // 初始排名为字符ASCII值
+        for (int i = 0; i < n; i++) {
+            rk[i] = s[i];
+        }
+        countSort(); // 第一次计数排序
+        
+        // 倍增法主循环（按双关键字排序）
+        for (int w = 1;; w <<= 1) {
+            // 处理长度为w的后缀，构建次关键字（起始位置>=w的后缀，次关键字为前w位的排名）
+            std::iota(begin(id), begin(id) + w + 1, n - w); // 初始化次关键字下标（末尾w个元素优先）
+            for (int i = 0, p = w; i < n; i++) { // 收集主关键字下标（起始位置<w的后缀，主关键字为当前排名）
+                if (sa[i] >= w) { // sa[i]是当前已排序的后缀起始位置
+                    id[p++] = sa[i] - w; // 次关键字为sa[i]-w位置的排名（主关键字+w的排名）
+                }
+            }
+            countSort(); // 按双关键字排序
+            
+            oldrk = rk; // 保存上一轮排名
+            
+            // 重新计算新排名
+            rk[sa[0]] = 0;
+            for (int i = 1, p = 0; i < n; i++) {
+                // 判断两个后缀是否相等（考虑长度w的双关键字）
+                rk[sa[i]] = equal(sa[i], sa[i - 1], w) ? p : ++p;
+            }
+            
+            // 所有排名唯一时终止（已完成所有后缀排序）
+            if (rk[sa.back()] + 1 == n) {
+                break;
+            }
+        }
+        
+        calcHeight(s); // 计算高度数组
+    }
+
+private:
+    std::vector<int> oldrk, id, tmp, cnt; // 临时数组（旧排名、下标数组、临时存储、计数数组）
+
+    template <class T>
+    inline void calcHeight(const T &s)
+    {
+        h.assign(n, 0); // 初始化高度数组
+        for (int i = 0, k = 0; i < n; i++) {
+            if (rk[i] == 0) { // 排名为0的后缀是最大的，无前驱后缀
+                continue;
+            }
+            k -= bool(k); // 避免k为0时减1（等价于k = k > 0 ? k-1 : 0）
+            // 计算后缀i与前一名后缀（sa[rk[i]-1]）的最长公共前缀
+            while (s[i + k] == s[sa[rk[i] - 1] + k]) { // 逐个字符比较
+                k += 1;
+            }
+            h[rk[i]] = k; // 高度数组存储排名为rk[i]的后缀与前一名的LCP
+        }
+    }
+
+    // 计数排序（用于双关键字排序）
+    inline void countSort()
+    {
+        int m = *std::max_element(begin(rk), end(rk)); // 获取当前最大排名值
+        cnt.assign(m + 1, 0); // 计数数组大小为最大排名+1
+        // 统计每个排名的出现次数（tmp存储当前下标的排名）
+        for (int i = 0; i < n; i++) {
+            cnt[tmp[i] = rk[id[i]]] += 1;
+        }
+        // 计算前缀和（确定排序后位置）
+        for (int i = 1; i < cnt.size(); i++) {
+            cnt[i] += cnt[i - 1];
+        }
+        // 逆序填充sa数组（稳定排序）
+        for (int i = n - 1; i >= 0; i--) {
+            sa[--cnt[tmp[i]]] = id[i]; // 根据排名和计数确定位置
+        }
+    }
+
+    // 判断两个后缀的前w个字符是否相等（基于旧排名）
+    inline bool equal(int x, int y, int w)
+    {
+        // 获取x和y位置的后缀，长度为w的双关键字排名
+        int rkx = (x + w < n ? oldrk[x + w] : -1); // 若越界，视为排名-1（小于任何有效排名）
+        int rky = (y + w < n ? oldrk[y + w] : -1);
+        // 主关键字（前w长度）和次关键字（后w长度）均相等时视为相等
+        return oldrk[x] == oldrk[y] && rkx == rky;
+    }
+    /**
+     * sa[i] -> 第i小的后缀（起始下标）
+     * rk[i] -> 后缀i的排名（0~n-1）
+     */
+};
+```
 
 \newpage
 

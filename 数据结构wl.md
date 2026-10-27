@@ -992,6 +992,82 @@ private:
 };
 ```
 
+### 线段树分治
+
+线段树分治，全称是线段树按时间分治，其思想非常简单，往往问题的模型都是，某些元素都只在一个或常数个连续的时间区间内出现，我们想到利用线段树在$log(len)$个线段里存下这个时间区间，也就是说我们维护一颗时间线段树，其每个叶子结点都是一个确定的时刻，其他节点都代表了一段时间区间，我们把信息存进线段树里，只需要统一处理，只需要递归到每个叶子结点就可以求出每个时间对应的答案。
+
+注意进入该节点需要加入信息，而退出该节点需要删除信息，复杂度${\cal O}(nlogn^2)$ 
+
+```cpp
+class SegmentTree
+{
+#define lc u << 1
+#define rc u << 1 | 1
+
+public:
+    struct Node
+    {
+        int l, r;
+    };
+    SegmentTree(int n) : n(n), tr(n + 1 << 2), ans(n + 1)
+    {
+        std::function<void(int, int, int)> build = [&](int u, int l, int r)
+        {
+            tr[u] = {l, r};
+            if (l == r)
+            {
+                return;
+            }
+            int mid = l + r >> 1;
+            build(lc, l, mid);
+            build(rc, mid + 1, r);
+        };
+        build(1, 1, n);
+    }
+
+    std::vector<int> getAns()
+    {
+        query(1, 1, n);
+        return ans;
+    }
+
+private:
+    int n;
+    std::vector<Node> tr;
+    std::vector<int> ans;
+    void addInfo(int u, int l, int r, int x, int y, int Info) // 传入起始和终止时间
+    {
+        if (x <= l and y >= r)
+        {
+            return;
+        }
+        int mid = l + r >> 1;
+        if (x <= mid)
+        {
+            addInfo(lc, l, mid, x, y, Info);
+        }
+        if (y > mid)
+        {
+            addInfo(rc, mid + 1, r, x, y, Info);
+        }
+    }
+    void query(int u, int l, int r)
+    {
+        // 加上当前节点的信息
+        if (l == r)
+        {
+            // ans[l]=
+            return;
+        }
+        int mid = l + r >> 1;
+        query(lc, l, mid);
+        query(rc, mid + 1, r);
+
+        // 删除该节点的信息（回退信息）
+    }
+};
+```
+
 ### 维护哈希
 
 线段树维护哈希，可以实现单点修改，区间覆盖，区间查询。
@@ -2826,6 +2902,8 @@ private:
 如果传入的Key 不被直接支持就利用 custom\_hash 把所有元素糅合一下
 
 不考虑顺序的情况下完全可以代替map和umap,只是占的空间可能有一点大
+
+**存储相同元素的情况下，gp_hash所占的空间一般是普通数组的6~12倍** 
 
 ```cpp
 #include<bits/extc++.h> 

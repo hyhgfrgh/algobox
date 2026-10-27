@@ -3397,6 +3397,14 @@ long double search(long double l, long double r, long double epsilon = 1e-9)
 
 结论：多个下凸函数的$max$仍然是下凸函数，多个上凸函数的$min$仍然是上凸函数
 
+# 概率
+
+## 马尔可夫性
+
+对于一个x=0不断进行操作，a的概率+1,b的概率终止，最后x的期望就是a/b
+
+设最后的期望是E，那么$E = \frac{a}{a+b}(1 + E) + \frac{b}{a+b} \cdot 0$ ,解方程即可得出E=a/b
+
 
 
 # 附件
