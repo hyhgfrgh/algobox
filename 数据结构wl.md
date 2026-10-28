@@ -4824,7 +4824,7 @@ public:
          *       若该节点左端点等于 pos，说明已存在分裂点，直接返回；
          *       否则分裂前一个节点，生成两个新区间
          */
-        IT it = s.lower_bound(Node(pos)); // 找到第一个左端点 >= pos 的节点
+        IT it = s.lower_bound(Node(pos,0,T{})); // 找到第一个左端点 >= pos 的节点
         if (it != s.end() && it->l == pos)
         {
             // 若存在左端点为 pos 的节点，直接返回（已分裂过）
@@ -4960,6 +4960,126 @@ public:
         }
     }
 };
+```
+
+### set维护不交区间
+如果认为区间$[1,4]$和区间$[5,8]$不相邻的话 我们把所有坐标乘$2$最后除$2$即可。
+
+```cpp
+struct DIU
+{
+    using Node = std::array<int, 2>;
+
+    // 用静态 lambda 作为比较器
+    inline static auto cmp = [](const Node &a, const Node &b)
+    {
+        return a[1] < b[0];
+    };
+
+    std::set<Node, decltype(cmp)> st{cmp}; // 在类内直接初始化
+
+    void add(int l, int r) // 插入[l,r]且保证一开始没有[l,r]
+    {
+        st.insert({l, r});
+    }
+    void insert(int l, int r) // 区间覆盖
+    {
+        auto it = st.find({l, l});
+        if (it != st.end())
+        {
+            auto [L, R] = *it;
+            st.erase(it);
+            l = std::min(l, L);
+            r = std::max(r, R);
+        }
+        it = st.find({r, r});
+        if (it != st.end())
+        {
+            auto [L, R] = *it;
+            st.erase(it);
+            l = std::min(l, L);
+            r = std::max(r, R);
+        }
+        // 合并前面和后面
+
+        it = st.lower_bound({l, l});
+        while (it != st.end())
+        {
+            auto [L, R] = *it;
+            if (L > r)
+            {
+                break;
+            }
+            ++it;
+            st.erase(std::prev(it));
+        }
+        // 删中间
+
+        it = st.find({l - 1, l - 1});
+        if (it != st.end())
+        {
+            auto [L, R] = *it;
+            l = L;
+            st.erase(it);
+        }
+        it = st.find({r + 1, r + 1});
+        if (it != st.end())
+        {
+            auto [L, R] = *it;
+            r = R;
+            st.erase(it);
+        }
+        // 合并前面和后面
+
+        st.insert({l, r});
+    }
+
+    void erase(int l, int r) // 区间删除[l,r]
+    {
+        auto it = st.find({l, l}); // 看l是不是0
+        if (it != st.end())
+        {
+            auto [L, R] = *it;
+            st.erase(it);
+            if (L <= l - 1)
+            {
+                st.insert({L, l - 1});
+            }
+            if (R > r)
+            {
+                st.insert({r + 1, R});
+            }
+        }
+        // 删掉开头
+
+        it = st.lower_bound({l, l});
+        while (it != st.end())
+        {
+            auto [L, R] = *it;
+            if (L > r)
+            {
+                break;
+            }
+            ++it;
+            st.erase(std::prev(it));
+            if (R > r)
+            {
+                st.insert({r + 1, R});
+            }
+        }
+        // 顺着删知道删完
+    }
+
+    // 分裂区间
+    void split()
+    {
+    }
+    // 合并区间
+    void merge()
+    {
+    }
+};
+
 ```
 
 \newpage
