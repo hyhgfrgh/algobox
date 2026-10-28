@@ -592,6 +592,7 @@ struct SuffixArray
     template <class T>
     SuffixArray(const T &s): n(s.size()), sa(n), rk(n), id(n), tmp(n)
     {
+        if (n == 0) return;
         // 初始化id数组为0~n-1（用于排序下标）
         std::iota(begin(id), end(id), 0); 
         // 初始排名为字符ASCII值
@@ -603,7 +604,7 @@ struct SuffixArray
         // 倍增法主循环（按双关键字排序）
         for (int w = 1;; w <<= 1) {
             // 处理长度为w的后缀，构建次关键字（起始位置>=w的后缀，次关键字为前w位的排名）
-            std::iota(begin(id), begin(id) + w + 1, n - w); // 初始化次关键字下标（末尾w个元素优先）
+            std::iota(begin(id), begin(id) + w, n - w); // 初始化次关键字下标（末尾w个元素优先）
             for (int i = 0, p = w; i < n; i++) { // 收集主关键字下标（起始位置<w的后缀，主关键字为当前排名）
                 if (sa[i] >= w) { // sa[i]是当前已排序的后缀起始位置
                     id[p++] = sa[i] - w; // 次关键字为sa[i]-w位置的排名（主关键字+w的排名）
@@ -637,13 +638,15 @@ private:
     {
         h.assign(n, 0); // 初始化高度数组
         for (int i = 0, k = 0; i < n; i++) {
-            if (rk[i] == 0) { // 排名为0的后缀是最大的，无前驱后缀
+            if (rk[i] == 0) {  // 排名为0的后缀是最大的，无前驱后缀
+                k = 0;
                 continue;
             }
-            k -= bool(k); // 避免k为0时减1（等价于k = k > 0 ? k-1 : 0）
+            if (k) --k;  // 避免k为0时减1（等价于k = k > 0 ? k-1 : 0）
             // 计算后缀i与前一名后缀（sa[rk[i]-1]）的最长公共前缀
-            while (s[i + k] == s[sa[rk[i] - 1] + k]) { // 逐个字符比较
-                k += 1;
+            int j = sa[rk[i] - 1];
+            while (i + k < n && j + k < n && s[i + k] == s[j + k]) {// 逐个字符比较
+                ++k;
             }
             h[rk[i]] = k; // 高度数组存储排名为rk[i]的后缀与前一名的LCP
         }
