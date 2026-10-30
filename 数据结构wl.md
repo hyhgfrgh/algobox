@@ -4935,6 +4935,8 @@ public:
 
 请注意:只有在权值两两不同时建出的笛卡尔树才唯一
 
+如果需要改为大根树只需将`a[stk[k]] > a[i]` 改为`a[stk[k]] < a[i]`，min_element改为max_element
+
 ```cpp
 class DescartesTree
 {
