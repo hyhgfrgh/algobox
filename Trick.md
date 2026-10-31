@@ -17,7 +17,7 @@ $$
 
 则有：
 
-$$
+\[
 S(n)=
 \begin{cases}
 n, & n\bmod 4=0 \\
@@ -25,7 +25,7 @@ n, & n\bmod 4=0 \\
 n+1, & n\bmod 4=2 \\
 0, & n\bmod 4=3
 \end{cases}
-$$
+\]
 
 ## 计算n!的末尾的0的个数
 

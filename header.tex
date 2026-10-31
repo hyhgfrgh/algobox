@@ -1,0 +1,63 @@
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{tocloft}
+\usepackage{titlesec}
+\usepackage{setspace}
+\usepackage{letltxmacro}
+\usepackage{graphicx}
+\usepackage[export]{adjustbox} % 引入高级图片控制
+
+% --- 1. 配色方案（现代深蓝风格） ---
+\definecolor{codebg}{RGB}{248,249,250}       % 代码块浅灰背景
+\definecolor{codeborder}{RGB}{218,220,224}   % 代码块边框
+\definecolor{themeblue}{RGB}{26,115,232}     % 主题蓝（用于标题和分隔线）
+\definecolor{commentgreen}{RGB}{0,128,0}     % 注释绿
+\definecolor{stringpurple}{RGB}{112,34,139}  % 字符串紫
+
+% --- 2. Listings 代码块极致美化 & 自动换行 ---
+\lstset{
+    backgroundcolor=\color{codebg},
+    frame=single,
+    framerule=0.5pt,
+    rulecolor=\color{codeborder},
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{themeblue}\bfseries,
+    commentstyle=\color{commentgreen}\itshape,
+    stringstyle=\color{stringpurple},
+    breaklines=true,            % 核心：开启完美的自动换行
+    breakatwhitespace=false,
+    columns=flexible,           % 极其关键：防止英文字符被奇怪拉伸，且完美兼容中文
+    keepspaces=true,
+    showstringspaces=false,
+    xleftmargin=4pt,
+    xrightmargin=4pt,
+    aboveskip=4pt,
+    belowskip=4pt
+}
+
+% --- 3. 单栏布局（双栏线已注释掉） ---
+% \setlength{\columnseprule}{0.5pt}
+% \def\columnseprulecolor{\color{themeblue!40}} 
+% \setlength{\columnsep}{18pt}                  
+
+% --- 4. 算法大标题美化（视觉锚点） ---
+\titleformat{\section}
+  {\normalfont\large\bfseries\color{themeblue}}{\thesection}{0.8em}{}[{\titlerule[1pt]}]
+\titlespacing*{\section}{0pt}{1.2ex}{0.6ex}
+\titlespacing*{\subsection}{0pt}{0.8ex}{0.4ex}
+
+% --- 5. 目录（TOC）极致紧凑化 ---
+\renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}} 
+\setlength{\cftbeforesecskip}{2pt}                   
+\setlength{\cftbeforesubsecskip}{1pt}
+
+% --- 6. 压榨正文间距（寸土寸金） ---
+\singlespacing              
+\setlength{\parskip}{2pt}   
+\setlength{\parsep}{0pt}
+
+% --- 7. 终极二合一优化：语雀公式 SVG 基线微调 + 智能防溢出缩放 ---
+\LetLtxMacro\oldincludegraphics\includegraphics
+\renewcommand{\includegraphics}[2][]{%
+  \raisebox{-0.35ex}{\oldincludegraphics[max width=\linewidth,keepaspectratio,#1]{#2}}%
+}
