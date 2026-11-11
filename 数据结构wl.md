@@ -4636,7 +4636,7 @@ struct Heap
 
     void add(T x)
     {
-        if (b.empty() or x >= b.top())
+        if (b.size() and x >= b.top())
         {
             b.push(x);
         }
@@ -4674,7 +4674,7 @@ struct Heap
     std::multiset<T> b;
     void add(T x)
     {
-        if (b.empty() || x >= *b.begin()){
+        if (b.size() and x >= *b.begin()){
             b.insert(x);
         }
         else{
